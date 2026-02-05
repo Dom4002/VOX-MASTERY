@@ -6,13 +6,15 @@ const cors = require('cors');
 
 // --- CONFIGURATION ---
 const PORT = process.env.PORT || 3000;
-const GEMINI_API_KEY = 'TA_CLE_API_GEMINI_ICI';
-const MAKE_CRM_WEBHOOK = 'TON_LIEN_WEBHOOK_MAKE_POUR_LE_CRM';
+// LECTURE DES VARIABLES D'ENVIRONNEMENT RENDER
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
+const MAKE_CRM_WEBHOOK = process.env.MAKE_CRM_WEBHOOK;
 
 // Initialisation
 const app = express();
-const upload = multer({ storage: multer.memoryStorage() }); // Stocke l'audio en mémoire
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const upload = multer({ storage: multer.memoryStorage() }); 
+// CORRECTION LIGNE 16 : UTILISER LA SYNTAXE CORRECTE
+const genAI = new GoogleGenerativeAI({ apiKey: GEMINI_API_KEY }); 
 
 app.use(cors()); // Permet à ton site de parler au serveur
 
