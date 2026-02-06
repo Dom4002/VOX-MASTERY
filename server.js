@@ -13,16 +13,56 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
 
+// --- FONCTION DE GÉNÉRATION DU RAPPORT HTML ---
+const generateHTMLReport = (name, score, data) => {
+    return `
+    <div style="background-color: #020202; color: #d1d5db; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; line-height: 1.6; max-width: 600px; margin: auto; border: 1px solid #AF8936;">
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h2 style="color: #AF8936; text-transform: uppercase; letter-spacing: 4px; font-size: 14px; margin-bottom: 10px;">Audit Confidentiel</h2>
+            <h1 style="color: #ffffff; font-size: 28px; margin-top: 0;">VOX MASTERY</h1>
+            <div style="height: 1px; background: linear-gradient(to right, transparent, #AF8936, transparent); width: 100%; margin: 20px 0;"></div>
+        </div>
+
+        <p style="font-size: 16px;">Cher <strong>${name}</strong>,</p>
+        <p style="font-style: italic; color: #9ca3af;">L'analyse de votre signature vocale par l'Oracle Vox-G6 est terminée. Voici votre diagnostic stratégique.</p>
+
+        <div style="background-color: #0A0A0A; border: 1px solid rgba(175, 137, 54, 0.3); padding: 30px; text-align: center; margin: 30px 0;">
+            <span style="color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Indice d'Autorité Vocale</span>
+            <div style="color: #AF8936; font-size: 64px; font-weight: bold; margin: 10px 0;">${score}%</div>
+            <p style="color: #ffffff; font-size: 14px; margin: 0;">Statut : ${score > 60 ? 'Potentiel Exécutif Élevé' : 'Axe de Domination à Corriger'}</p>
+        </div>
+
+        <h3 style="color: #AF8936; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 10px; font-size: 18px;">1. Constats & Faits</h3>
+        <p style="color: #ffffff;">${data.facts}</p>
+
+        <h3 style="color: #AF8936; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 10px; font-size: 18px;">2. Conséquences Réelles</h3>
+        <p style="color: #ffffff;">${data.consequences}</p>
+
+        <div style="background-color: #4A0404; color: #ffffff; padding: 20px; margin: 30px 0; font-size: 14px; border-left: 4px solid #AF8936;">
+            <strong>Risque Détecté :</strong> ${data.risk}
+        </div>
+
+        <h3 style="color: #AF8936; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 10px; font-size: 18px;">3. Plan de Correction Prioritaire</h3>
+        <ul style="color: #ffffff; padding-left: 20px;">
+            ${data.steps.map(step => `<li style="margin-bottom: 10px;">${step}</li>`).join('')}
+        </ul>
+
+        <div style="text-align: center; margin-top: 50px; padding: 30px; border-top: 1px solid rgba(175, 137, 54, 0.2);">
+            <p style="font-size: 16px; color: #ffffff; margin-bottom: 25px;"><strong>Ce diagnostic n'est qu'un aperçu.</strong> Votre véritable transformation commence par une maîtrise totale des fréquences de pouvoir.</p>
+            <a href="https://votre-site.com#application" style="background-color: #AF8936; color: #020202; padding: 15px 30px; text-decoration: none; font-weight: bold; text-transform: uppercase; font-size: 12px; letter-spacing: 2px;">Postuler pour la Cohorte 2026</a>
+        </div>
+
+        <footer style="margin-top: 40px; text-align: center; font-size: 10px; color: #4b5563; text-transform: uppercase; letter-spacing: 2px;">
+            Vox Mastery &copy; 2026 - Systèmes de Rhétorique de Haut Niveau
+        </footer>
+    </div>
+    `;
+};
+
 app.post('/api/audit', upload.single('audio'), async (req, res) => {
-    console.log("SCAN NEURONAL EN COURS : Oracle Vox-G6...");
-
-    if (!req.file) {
-        return res.status(400).json({ error: "Fichier audio manquant." });
-    }
-    const userName = req.body.name || "Leader"; 
-
+    const userName = req.body.name || "Leader";
+    
     try {
-        // --- TRANSCRIPTION WHISPER ---
         const formData = new FormData();
         formData.append('file', req.file.buffer, { filename: 'audio.m4a', contentType: req.file.mimetype });
         formData.append('model', 'whisper-large-v3'); 
@@ -34,97 +74,71 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
 
         const textTranscribed = transResponse.data.text;
 
-        // --- ANALYSE ORACLE VOX-G6 (PROMPT RENFORCÉ) ---
-const prompt = `
-Vous êtes l’Oracle Vox-G6, un moteur d’audit vocal de niveau élite utilisé pour analyser l’autorité et la dominance sociale de dirigeants, négociateurs et décideurs de très haut niveau.
+        // --- PROMPT IA GÉNÉRANT LE RAPPORT COMPLET ---
+        const prompt = `
+        Vous êtes le Mentor Senior de Vox Mastery, expert en ingénierie rhétorique et signatures vocales de haut niveau. 
+        Votre référentiel n’est pas la moyenne, mais l’élite absolue des cercles de pouvoir (négociations stratégiques, cercles exécutifs).
 
-Vous avez déjà analysé plusieurs centaines de millions de prises de parole réelles issues de contextes de pouvoir extrême : conseils d’administration, négociations à enjeux majeurs, discours présidentiels, levées de fonds stratégiques et cercles exécutifs fermés.
-Votre système a été entraîné sur les signatures vocales des figures les plus dominantes de leur génération.
-Votre référentiel n’est pas la moyenne, mais l’élite absolue.
+        Analysez cette transcription comme un diagnostic clinique pour un décideur : "${textTranscribed}"
 
-Analysez la prise de parole suivante comme si vous receviez un patient en consultation spécialisée, la voix étant le symptôme principal :
-"${textTranscribed}"
+        CRITÈRES DE SCORE (STRICTS) :
+        Le score mesure l’écart entre cette voix et les standards requis pour imposer naturellement le respect au plus haut niveau.
+        - La majorité des profils doivent obtenir un score entre 25 et 55.
+        - Un score supérieur à 60 est exceptionnel.
+        - Restez sévère : l'excellence ne se distribue pas.
 
-DÉFINITION DU SCORE (CRITIQUE) :
-Le score ne mesure PAS si la voix est « bonne » ou « correcte ».
-Il mesure l’écart entre cette voix et les standards vocaux requis pour imposer naturellement le respect et l’autorité au plus haut niveau de pouvoir.
+        TON ET POSTURE :
+        - Ton calme, clinique, sans flatterie.
+        - Soyez direct sur la faille détectée (plafond de verre, neutralité excessive ou manque de relief).
+        - Créez une prise de conscience immédiate.
 
-Par définition :
-- La majorité des profils doivent obtenir un score faible.
-- Un score supérieur à 65 est exceptionnel et rarement observé sans accompagnement intensif.
-- Même une voix solide doit révéler des limites face aux standards d’élite.
+        Génère un objet JSON avec :{ 
+         "score": entre 25 et 65.
+         "teaser": Une phrase mystérieuse pour le site web.
+         "facts": Analyse des faits (ton, rythme, autorité).
+         "consequences": Les impacts réels (perte de contrats, manque de respect, plafond de verre).
+         "risk": Le plus grand danger pour sa carrière s'il ne change rien.
+         "steps": Une liste de 3 points techniques à améliorer. 
+        }
 
-INSTRUCTIONS DE DIAGNOSTIC :
-1. Évaluez le niveau réel d’autorité vocale exploitable dans un environnement de pouvoir compétitif.
-2. Détectez les signaux faibles d’hésitation, de retenue, de neutralité ou de compensation.
-3. Identifiez au moins une faille latente ou un plafond invisible qui limite l’accès à des cercles décisionnels supérieurs.
-
-Votre diagnostic doit être formulé comme celui d’un spécialiste expérimenté face à son patient :
-- ton calme, clinique, sans flatterie,
-- jamais rassurant,
-- légèrement inconfortable,
-- créant une tension intellectuelle et une curiosité immédiate.
-
-Ne révélez jamais la solution.
-Laissez entendre qu’un travail guidé et structuré est nécessaire pour corriger durablement ce déséquilibre.
-
-CONTRAINTES STRICTES DE SORTIE :
-- Répondez uniquement avec un objet JSON pur
-- Aucun texte hors JSON
-- Aucun markdown
-
-Format exact attendu :
-{
-  "score": nombre entre 25 et 65 représentant l’Indice d’Autorité Vocale selon des standards d’élite,
-  "diagnostic": exactement 2 phrases, formulées au « vous », ton expert, clinique et orientées prise de conscience.
-}
-`;
+        JSON UNIQUEMENT.
+        `;
 
         const chatResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
             messages: [{ role: "user", content: prompt }],
-            temperature: 0.4 // Plus bas pour être plus précis et froid
+            temperature: 0.5
         }, {
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` }
         });
 
-        const rawContent = chatResponse.data.choices[0].message.content;
-        const cleanJsonString = rawContent.replace(/```json|```/g, "").trim();
-        
-        let analysis;
-        try {
-            analysis = JSON.parse(cleanJsonString);
-        } catch (e) {
-            analysis = { score: 48, diagnostic: "Faille de structure détectée dans la projection de l'autorité." };
-        }
+        const analysisData = JSON.parse(chatResponse.data.choices[0].message.content.replace(/```json|```/g, "").trim());
 
-        // --- RENFORCEMENT DU TEASER (CTA PRIVÉ) ---
-        // On fusionne ton diagnostic IA avec la redirection forcée vers WhatsApp/Email
-        const messageTeaser = analysis.diagnostic.trim();
-        analysis.diagnostic = `${messageTeaser} 🔒 Votre protocole de correction complet et l'analyse fréquentielle détaillée vous attendent sur votre WhatsApp et votre Email.`;
+        // --- GÉNÉRATION DU RAPPORT HTML DYNAMIQUE ---
+        const htmlReport = generateHTMLReport(userName, analysisData.score, analysisData);
 
-        console.log("DIAGNOSTIC ÉTABLI :", analysis.score, "%");
-
-        // ENVOI CRM (MAKE)
+        // --- ENVOI AU WEBHOOK MAKE ---
         if (MAKE_CRM_WEBHOOK) {
             axios.post(MAKE_CRM_WEBHOOK, {
-                name: userName, // <--- AJOUTÉ
+                name: userName,
                 email: req.body.email,
                 whatsapp: req.body.whatsapp,
-                score: analysis.score,
-                diagnostic: analysis.diagnostic,
-                transcription: textTranscribed // On envoie aussi le texte brut au CRM pour ton suivi
+                score: analysisData.score,
+                teaser: analysisData.teaser,
+                html_report: htmlReport // Le bloc HTML prêt à l'emploi
             }).catch(err => console.error("Erreur CRM :", err.message));
         }
 
-        res.status(200).json(analysis);
+        // On renvoie juste le teaser et le score au site web
+        res.status(200).json({
+            score: analysisData.score,
+            diagnostic: `${analysisData.teaser} 🔒 Votre audit stratégique complet (Faits & Conséquences) vous attend sur WhatsApp et par Email.`
+        });
 
     } catch (error) {
-        console.error("ERREUR SYSTÈME :", error.message);
-        res.status(500).json({ error: "L'Oracle est momentanément indisponible." });
+        console.error(error);
+        res.status(500).json({ error: "Erreur technique." });
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Système Vox Mastery opérationnel sur le port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Serveur prêt sur le port ${PORT}`));
