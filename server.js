@@ -23,124 +23,71 @@ const generateFullHTMLReport = (name, score, data) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bilan Stratégique Vox Mastery</title>
-    <!-- Stylesheets externes sont généralement bloqués. L'utilisation de la balise <style> est un standard de l'email, mais les styles critiques doivent être INLINÉS. -->
-    <style type="text/css">
-        /* Client-specific resets/fixes */
-        body, table, td, p, a, li { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; }
-        a { text-decoration: none; }
-        /* Common classes for easy maintenance */
-        .gold { color: #AF8936 !important; }
-        .white { color: #ffffff !important; }
-        .wrapper { background-color: #020202; }
-        /* Moins de bordure agressive pour adoucir l'aspect */
-        .main { border: 1px solid rgba(175, 137, 54, 0.5); border-top: 5px solid #AF8936; } 
+    <title>Audit Stratégique Vox Mastery</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #020202; color: #d1d5db; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+        .wrapper { width: 100%; table-layout: fixed; background-color: #020202; padding-bottom: 60px; }
+        .main { background-color: #0a0a0a; width: 100%; max-width: 600px; margin: 0 auto; border: 1px solid #AF8936; border-top: 5px solid #AF8936; }
+        .header { padding: 40px; text-align: center; border-bottom: 1px solid rgba(175, 137, 54, 0.2); }
+        .content { padding: 40px; }
+        .gold { color: #AF8936; }
+        .white { color: #ffffff; }
+        .score-box { background-color: #020202; border: 1px solid #AF8936; padding: 30px; text-align: center; margin: 30px 0; }
         .score-value { font-size: 72px; font-weight: bold; color: #AF8936; margin: 0; line-height: 1; }
-        /* Ton plus élégant */
-        .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 3px; color: #AF8936; margin-bottom: 15px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px; } 
-        .cta-button-td { background-color: #AF8936; } 
-        
-        /* Mobile adaptation */
-        @media only screen and (max-width: 620px) {
-            .main, .wrapper { width: 100% !important; min-width: 100% !important; }
-            .content, .header, .footer { padding-left: 20px !important; padding-right: 20px !important; }
-            .score-value { font-size: 50px !important; }
-        }
+        .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 3px; color: #AF8936; margin-bottom: 15px; border-bottom: 1px solid rgba(175, 137, 54, 0.1); padding-bottom: 5px; }
+        .alert-box { background-color: #4A0404; border-left: 4px solid #AF8936; padding: 20px; margin: 30px 0; color: #ffffff; font-size: 14px; }
+        .cta-button { display: inline-block; background-color: #AF8936; color: #020202; padding: 18px 35px; text-decoration: none; font-weight: bold; text-transform: uppercase; font-size: 12px; letter-spacing: 2px; margin-top: 30px; }
+        .footer { padding: 30px; text-align: center; font-size: 10px; color: #4b5563; text-transform: uppercase; letter-spacing: 2px; }
+        li { margin-bottom: 12px; }
     </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #020202; color: #d1d5db; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+<body>
+    <div class="wrapper">
+        <div class="main">
+            <div class="header">
+                <p style="margin: 0; font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: #AF8936;">Confidentiel • Dossier ${Math.floor(Math.random()*90000) + 10000}</p>
+                <h1 style="margin: 20px 0 0 0; font-size: 32px; letter-spacing: -1px;" class="white">VOX MASTERY</h1>
+                <p style="font-size: 12px; color: #6b7280;">Audit du ${date}</p>
+            </div>
 
-    <!-- Wrapper Table (Main container) -->
-    <table role="presentation" class="wrapper" width="100%" cellspacing="0" cellpadding="0" border="0" style="table-layout: fixed; background-color: #020202;">
-        <tr>
-            <td align="center" style="padding-top: 60px; padding-bottom: 60px;">
-                <!-- Main Content Table -->
-                <table role="presentation" class="main" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #0a0a0a; max-width: 600px; border: 1px solid rgba(175, 137, 54, 0.5); border-top: 5px solid #AF8936;">
-                    
-                    <!-- Header -->
-                    <tr>
-                        <td class="header" style="padding: 40px; text-align: center; border-bottom: 1px solid rgba(175, 137, 54, 0.2);">
-                            <!-- Texte plus valorisant -->
-                            <p style="margin: 0; font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: #AF8936;">Analyse Personnelle • Dossier ${Math.floor(Math.random()*90000) + 10000}</p>
-                            <h1 style="margin: 20px 0 0 0; font-size: 32px; letter-spacing: -1px; color: #ffffff;">VOX MASTERY</h1>
-                            <p style="font-size: 12px; color: #6b7280;">Bilan du ${date}</p>
-                        </td>
-                    </tr>
+            <div class="content">
+                <p class="white">Cher <strong>${name}</strong>,</p>
+                <p>L'analyse fréquentielle de votre prise de parole a été soumise au protocole de l'Oracle Vox-G6. Ce rapport identifie les écarts entre votre signature vocale actuelle et les standards d'autorité de l'élite exécutive.</p>
 
-                    <!-- Content -->
-                    <tr>
-                        <td class="content" style="padding: 40px; color: #d1d5db;">
-                            <p style="color: #ffffff; margin-top: 0;">Cher <strong>${name}</strong>,</p>
-                            <!-- Ton plus humain -->
-                            <p style="margin-bottom: 30px;">L'analyse personnalisée de votre <em style="color:#AF8936;">empreinte vocale</em> a été menée par notre équipe d'experts. Ce bilan a pour but de révéler les opportunités d'alignement entre votre prise de parole actuelle et les codes d'impact de l'élite exécutive.</p>
+                <div class="score-box">
+                    <p style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Indice d'Autorité Vocale</p>
+                    <h2 class="score-value">${score}%</h2>
+                    <p style="margin: 10px 0 0 0; font-size: 13px;" class="gold">${score > 60 ? 'Potentiel de Leader Détecté' : 'Seuil Critique d\\'Autorité Non Atteint'}</p>
+                </div>
 
-                            <!-- Score Box -->
-                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                                <tr>
-                                    <td class="score-box" align="center" style="background-color: #020202; border: 1px solid #AF8936; padding: 30px; margin: 30px 0;">
-                                        <!-- Terme plus positif -->
-                                        <p style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Votre Potentiel d'Impact Vocal</p>
-                                        <h2 class="score-value" style="font-size: 72px; font-weight: bold; color: #AF8936; margin: 10px 0;">${score}%</h2>
-                                        <!-- Phrase plus inspirante -->
-                                        <p style="margin: 10px 0 0 0; font-size: 13px; color: #AF8936;">${score > 60 ? 'Un Leadership Naturel Déjà Exprimé' : 'Un Fort Potentiel à Déverrouiller Rapidement'}</p>
-                                    </td>
-                                </tr>
-                            </table>
-                            <!-- End Score Box -->
+                <div class="section-title">01. Constats & Analyse des faits</div>
+                <p class="white">${data.facts}</p>
 
-                            <!-- Section 01 -->
-                            <div class="section-title" style="font-size: 14px; text-transform: uppercase; letter-spacing: 3px; color: #AF8936; margin-top: 40px; margin-bottom: 15px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px;">01. Bilan & Observations Clés</div>
-                            <p style="color: #ffffff;">${data.facts}</p>
+                <div class="section-title">02. Conséquences sur votre Leadership</div>
+                <p class="white">${data.consequences}</p>
 
-                            <!-- Section 02 -->
-                            <div class="section-title" style="font-size: 14px; text-transform: uppercase; letter-spacing: 3px; color: #AF8936; margin-top: 40px; margin-bottom: 15px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px;">02. L'enjeu pour votre Parcours de Leader</div>
-                            <p style="color: #ffffff;">${data.consequences}</p>
+                <div class="alert-box">
+                    <strong>RISQUE MAJEUR :</strong> ${data.risk}
+                </div>
 
-                            <!-- Alert Box - Moins alarmiste -->
-                            <div class="alert-box" style="background-color: #4A0404; border-left: 4px solid #AF8936; padding: 20px; margin: 30px 0; color: #ffffff; font-size: 14px;">
-                                <strong>POINT DE VIGILANCE ESSENTIEL :</strong> ${data.risk}
-                            </div>
-                            
-                            <!-- Section 03 -->
-                            <div class="section-title" style="font-size: 14px; text-transform: uppercase; letter-spacing: 3px; color: #AF8936; margin-top: 40px; margin-bottom: 15px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px;">03. Axes de Développement Prioritaires</div>
-                            <ul style="margin-top: 20px; padding-left: 20px; color: #d1d5db;">
-                                ${data.steps.map(step => `<li style="margin-bottom: 12px; color: #ffffff;">${step}</li>`).join('')}
-                            </ul>
+                <div class="section-title">03. Protocole de correction prioritaire</div>
+                <ul style="margin-top: 20px;">
+                    ${data.steps.map(step => `<li class="white">${step}</li>`).join('')}
+                </ul>
 
-                            <!-- CTA Section -->
-                            <div style="text-align: center; margin-top: 50px;">
-                                <p style="color: #ffffff; font-size: 16px; margin-bottom: 10px;"><strong>Ce bilan révèle une partie de votre potentiel.</strong></p>
-                                <p style="font-size: 14px; margin-bottom: 25px;">Pour franchir le plafond de verre de votre carrière, votre voix doit devenir un **levier stratégique** de négociation et d'influence.</p>
-                                
-                                <!-- Bulletproof CTA Button using Table -->
-                                <table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center">
-                                    <tr>
-                                        <td align="center" class="cta-button-td" style="border-radius: 0; background-color: #AF8936; padding: 0;">
-                                            <a href="https://votre-site.com#application" target="_blank" style="display: block; padding: 18px 35px; color: #020202; text-decoration: none; font-weight: bold; text-transform: uppercase; font-size: 12px; letter-spacing: 2px;">
-                                                Découvrir le Programme sur Mesure
-                                            </a>
-                                        </td>
-                                    </tr>
-                                </table>
-                                <!-- End CTA Button -->
-                            </div>
-                        </td>
-                    </tr>
-                    
-                    <!-- Footer -->
-                    <tr>
-                        <td class="footer" style="padding: 30px; text-align: center; font-size: 10px; color: #4b5563; text-transform: uppercase; letter-spacing: 2px;">
-                            Vox Mastery © 2026 — L'art de l'impact Exécutif<br>
-                            Consultation d'Élite et Accompagnement Personnalisé.
-                        </td>
-                    </tr>
+                <div style="text-align: center; margin-top: 50px;">
+                    <p class="white" style="font-size: 16px;"><strong>Ce diagnostic n'est que la surface.</strong></p>
+                    <p style="font-size: 14px;">Pour franchir le plafond de verre de votre carrière, votre voix doit cesser d'être un bruit de fond pour devenir une arme de négociation.</p>
+                    <a href="https://votre-site.com#application" class="cta-button">Accéder au Mentorat d'Élite</a>
+                </div>
+            </div>
 
-                </table>
-                <!-- End Main Content Table -->
-            </td>
-        </tr>
-    </table>
-    <!-- End Wrapper Table -->
+            <div class="footer">
+                Vox Mastery © 2026 — Systèmes de Rhétorique de Haut Niveau<br>
+                Service de sélection confidentiel.
+            </div>
+        </div>
+    </div>
 </body>
 </html>`;
 };
