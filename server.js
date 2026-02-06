@@ -13,50 +13,83 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
 
-// --- FONCTION DE GÉNÉRATION DU RAPPORT HTML ---
-const generateHTMLReport = (name, score, data) => {
+// --- TEMPLATE HTML COMPLET (DESIGN ÉLITE) ---
+const generateFullHTMLReport = (name, score, data) => {
+    const date = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    
     return `
-    <div style="background-color: #020202; color: #d1d5db; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; line-height: 1.6; max-width: 600px; margin: auto; border: 1px solid #AF8936;">
-        <div style="text-align: center; margin-bottom: 40px;">
-            <h2 style="color: #AF8936; text-transform: uppercase; letter-spacing: 4px; font-size: 14px; margin-bottom: 10px;">Audit Confidentiel</h2>
-            <h1 style="color: #ffffff; font-size: 28px; margin-top: 0;">VOX MASTERY</h1>
-            <div style="height: 1px; background: linear-gradient(to right, transparent, #AF8936, transparent); width: 100%; margin: 20px 0;"></div>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Stratégique Vox Mastery</title>
+    <style>
+        body { margin: 0; padding: 0; background-color: #020202; color: #d1d5db; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+        .wrapper { width: 100%; table-layout: fixed; background-color: #020202; padding-bottom: 60px; }
+        .main { background-color: #0a0a0a; width: 100%; max-width: 600px; margin: 0 auto; border: 1px solid #AF8936; border-top: 5px solid #AF8936; }
+        .header { padding: 40px; text-align: center; border-bottom: 1px solid rgba(175, 137, 54, 0.2); }
+        .content { padding: 40px; }
+        .gold { color: #AF8936; }
+        .white { color: #ffffff; }
+        .score-box { background-color: #020202; border: 1px solid #AF8936; padding: 30px; text-align: center; margin: 30px 0; }
+        .score-value { font-size: 72px; font-weight: bold; color: #AF8936; margin: 0; line-height: 1; }
+        .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 3px; color: #AF8936; margin-bottom: 15px; border-bottom: 1px solid rgba(175, 137, 54, 0.1); padding-bottom: 5px; }
+        .alert-box { background-color: #4A0404; border-left: 4px solid #AF8936; padding: 20px; margin: 30px 0; color: #ffffff; font-size: 14px; }
+        .cta-button { display: inline-block; background-color: #AF8936; color: #020202; padding: 18px 35px; text-decoration: none; font-weight: bold; text-transform: uppercase; font-size: 12px; letter-spacing: 2px; margin-top: 30px; }
+        .footer { padding: 30px; text-align: center; font-size: 10px; color: #4b5563; text-transform: uppercase; letter-spacing: 2px; }
+        li { margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="main">
+            <div class="header">
+                <p style="margin: 0; font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: #AF8936;">Confidentiel • Dossier ${Math.floor(Math.random()*90000) + 10000}</p>
+                <h1 style="margin: 20px 0 0 0; font-size: 32px; letter-spacing: -1px;" class="white">VOX MASTERY</h1>
+                <p style="font-size: 12px; color: #6b7280;">Audit du ${date}</p>
+            </div>
+
+            <div class="content">
+                <p class="white">Cher <strong>${name}</strong>,</p>
+                <p>L'analyse fréquentielle de votre prise de parole a été soumise au protocole de l'Oracle Vox-G6. Ce rapport identifie les écarts entre votre signature vocale actuelle et les standards d'autorité de l'élite exécutive.</p>
+
+                <div class="score-box">
+                    <p style="margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Indice d'Autorité Vocale</p>
+                    <h2 class="score-value">${score}%</h2>
+                    <p style="margin: 10px 0 0 0; font-size: 13px;" class="gold">${score > 60 ? 'Potentiel de Leader Détecté' : 'Seuil Critique d\\'Autorité Non Atteint'}</p>
+                </div>
+
+                <div class="section-title">01. Constats & Analyse des faits</div>
+                <p class="white">${data.facts}</p>
+
+                <div class="section-title">02. Conséquences sur votre Leadership</div>
+                <p class="white">${data.consequences}</p>
+
+                <div class="alert-box">
+                    <strong>RISQUE MAJEUR :</strong> ${data.risk}
+                </div>
+
+                <div class="section-title">03. Protocole de correction prioritaire</div>
+                <ul style="margin-top: 20px;">
+                    ${data.steps.map(step => `<li class="white">${step}</li>`).join('')}
+                </ul>
+
+                <div style="text-align: center; margin-top: 50px;">
+                    <p class="white" style="font-size: 16px;"><strong>Ce diagnostic n'est que la surface.</strong></p>
+                    <p style="font-size: 14px;">Pour franchir le plafond de verre de votre carrière, votre voix doit cesser d'être un bruit de fond pour devenir une arme de négociation.</p>
+                    <a href="https://votre-site.com#application" class="cta-button">Accéder au Mentorat d'Élite</a>
+                </div>
+            </div>
+
+            <div class="footer">
+                Vox Mastery © 2026 — Systèmes de Rhétorique de Haut Niveau<br>
+                Service de sélection confidentiel.
+            </div>
         </div>
-
-        <p style="font-size: 16px;">Cher <strong>${name}</strong>,</p>
-        <p style="font-style: italic; color: #9ca3af;">L'analyse de votre signature vocale par l'Oracle Vox-G6 est terminée. Voici votre diagnostic stratégique.</p>
-
-        <div style="background-color: #0A0A0A; border: 1px solid rgba(175, 137, 54, 0.3); padding: 30px; text-align: center; margin: 30px 0;">
-            <span style="color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">Indice d'Autorité Vocale</span>
-            <div style="color: #AF8936; font-size: 64px; font-weight: bold; margin: 10px 0;">${score}%</div>
-            <p style="color: #ffffff; font-size: 14px; margin: 0;">Statut : ${score > 60 ? 'Potentiel Exécutif Élevé' : 'Axe de Domination à Corriger'}</p>
-        </div>
-
-        <h3 style="color: #AF8936; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 10px; font-size: 18px;">1. Constats & Faits</h3>
-        <p style="color: #ffffff;">${data.facts}</p>
-
-        <h3 style="color: #AF8936; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 10px; font-size: 18px;">2. Conséquences Réelles</h3>
-        <p style="color: #ffffff;">${data.consequences}</p>
-
-        <div style="background-color: #4A0404; color: #ffffff; padding: 20px; margin: 30px 0; font-size: 14px; border-left: 4px solid #AF8936;">
-            <strong>Risque Détecté :</strong> ${data.risk}
-        </div>
-
-        <h3 style="color: #AF8936; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 10px; font-size: 18px;">3. Plan de Correction Prioritaire</h3>
-        <ul style="color: #ffffff; padding-left: 20px;">
-            ${data.steps.map(step => `<li style="margin-bottom: 10px;">${step}</li>`).join('')}
-        </ul>
-
-        <div style="text-align: center; margin-top: 50px; padding: 30px; border-top: 1px solid rgba(175, 137, 54, 0.2);">
-            <p style="font-size: 16px; color: #ffffff; margin-bottom: 25px;"><strong>Ce diagnostic n'est qu'un aperçu.</strong> Votre véritable transformation commence par une maîtrise totale des fréquences de pouvoir.</p>
-            <a href="https://votre-site.com#application" style="background-color: #AF8936; color: #020202; padding: 15px 30px; text-decoration: none; font-weight: bold; text-transform: uppercase; font-size: 12px; letter-spacing: 2px;">Postuler pour la Cohorte 2026</a>
-        </div>
-
-        <footer style="margin-top: 40px; text-align: center; font-size: 10px; color: #4b5563; text-transform: uppercase; letter-spacing: 2px;">
-            Vox Mastery &copy; 2026 - Systèmes de Rhétorique de Haut Niveau
-        </footer>
     </div>
-    `;
+</body>
+</html>`;
 };
 
 app.post('/api/audit', upload.single('audio'), async (req, res) => {
@@ -74,7 +107,6 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
 
         const textTranscribed = transResponse.data.text;
 
-        // --- PROMPT IA GÉNÉRANT LE RAPPORT COMPLET ---
         const prompt = `
         Vous êtes le Mentor Senior de Vox Mastery, expert en ingénierie rhétorique et signatures vocales de haut niveau. 
         Votre référentiel n’est pas la moyenne, mais l’élite absolue des cercles de pouvoir (négociations stratégiques, cercles exécutifs).
@@ -91,17 +123,14 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         - Ton calme, clinique, sans flatterie.
         - Soyez direct sur la faille détectée (plafond de verre, neutralité excessive ou manque de relief).
         - Créez une prise de conscience immédiate.
-
-        Génère un objet JSON avec :{ 
-         "score": entre 25 et 65.
-         "teaser": Une phrase mystérieuse pour le site web.
-         "facts": Analyse des faits (ton, rythme, autorité).
-         "consequences": Les impacts réels (perte de contrats, manque de respect, plafond de verre).
-         "risk": Le plus grand danger pour sa carrière s'il ne change rien.
-         "steps": Une liste de 3 points techniques à améliorer. 
-        }
-
-        JSON UNIQUEMENT.
+        
+        Génère un objet JSON avec EXACTEMENT ces clés :
+        1. "score": entre 25 et 65.
+        2. "teaser": Une phrase mystérieuse pour le site web.
+        3. "facts": Analyse des faits (ton, rythme, autorité).
+        4. "consequences": Les impacts réeels (perte de contrats, manque de respect).
+        5. "risk": Le plus grand danger professionnel.
+        6. "steps": Une liste de 3 points techniques à améliorer.
         `;
 
         const chatResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
@@ -114,8 +143,8 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
 
         const analysisData = JSON.parse(chatResponse.data.choices[0].message.content.replace(/```json|```/g, "").trim());
 
-        // --- GÉNÉRATION DU RAPPORT HTML DYNAMIQUE ---
-        const htmlReport = generateHTMLReport(userName, analysisData.score, analysisData);
+        // --- GÉNÉRATION DU DOCUMENT HTML COMPLET ---
+        const finalHTML = generateFullHTMLReport(userName, analysisData.score, analysisData);
 
         // --- ENVOI AU WEBHOOK MAKE ---
         if (MAKE_CRM_WEBHOOK) {
@@ -125,14 +154,13 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
                 whatsapp: req.body.whatsapp,
                 score: analysisData.score,
                 teaser: analysisData.teaser,
-                html_report: htmlReport // Le bloc HTML prêt à l'emploi
+                full_html_report: finalHTML // Le document complet
             }).catch(err => console.error("Erreur CRM :", err.message));
         }
 
-        // On renvoie juste le teaser et le score au site web
         res.status(200).json({
             score: analysisData.score,
-            diagnostic: `${analysisData.teaser} 🔒 Votre audit stratégique complet (Faits & Conséquences) vous attend sur WhatsApp et par Email.`
+            diagnostic: `${analysisData.teaser} 🔒 Votre audit stratégique complet (Faits & Conséquences) a été généré et vous attend sur votre WhatsApp et votre Email.`
         });
 
     } catch (error) {
@@ -141,4 +169,4 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
     }
 });
 
-app.listen(PORT, () => console.log(`Serveur prêt sur le port ${PORT}`));
+app.listen(PORT, () => console.log(`Système Vox Mastery opérationnel sur le port ${PORT}`));
