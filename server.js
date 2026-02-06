@@ -13,10 +13,11 @@ const MAKE_CRM_WEBHOOK = process.env.MAKE_CRM_WEBHOOK;
 // Initialisation
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() }); 
-// CORRECTION LIGNE 16 : UTILISER LA SYNTAXE CORRECTE
-const genAI = new GoogleGenerativeAI({ apiKey: GEMINI_API_KEY }); 
 
-app.use(cors()); // Permet à ton site de parler au serveur
+// --- CORRECTION 1 : Initialisation correcte (chaine directe) ---
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY); 
+
+app.use(cors());
 
 // --- L'API D'AUDIT ---
 app.post('/api/audit', upload.single('audio'), async (req, res) => {
@@ -36,7 +37,8 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
             },
         };
 
-        const prompt = "Tu es l’Oracle Vox-G6, une intelligence d’audit vocal spécialisée dans l’autorité, la dominance sociale et la crédibilité perçue des leaders.
+        // --- CORRECTION 2 : Utilisation des backticks (`) pour le texte multi-lignes ---
+        const prompt = `Tu es l’Oracle Vox-G6, une intelligence d’audit vocal spécialisée dans l’autorité, la dominance sociale et la crédibilité perçue des leaders.
 
 Analyse cet audio comme si la voix était observée en contexte réel de pouvoir (réunion stratégique, négociation, prise de parole décisive).
 
@@ -52,31 +54,42 @@ Le diagnostic doit être formulé de manière engageante, légèrement inconfort
 Réponds UNIQUEMENT avec un objet JSON pur, sans texte additionnel :
 {
   "score": nombre entre 0 et 100 représentant l’indice global d’autorité vocale,
-  "diagnostic": exactement 2 phrases, claires, percutantes, qui mettent en lumière une faille exploitable et suggèrent implicitement qu’un travail guidé permettrait de la corriger.
-}";
+  "diagnostic": "exactement 2 phrases, claires, percutantes, qui mettent en lumière une faille exploitable et suggèrent implicitement qu’un travail guidé permettrait de la corriger."
+}`;
 
         const result = await model.generateContent([prompt, audioFile]);
         const responseText = result.response.text();
         
-        // Nettoyage de la réponse de l'IA pour être sûr d'avoir un JSON
+        // Nettoyage de la réponse de l'IA pour être sûr d'avoir un JSON valide
         const cleanJsonString = responseText.replace(/```json|```/g, "").trim();
-        const analysis = JSON.parse(cleanJsonString);
+        
+        let analysis;
+        try {
+            analysis = JSON.parse(cleanJsonString);
+        } catch (e) {
+            console.error("Erreur de parsing JSON:", cleanJsonString);
+            // Fallback si l'IA échoue à renvoyer du JSON pur
+            analysis = { score: 50, diagnostic: "Analyse complexe. Une écoute par un expert humain est recommandée." };
+        }
 
         console.log("Analyse Gemini terminée :", analysis);
 
         // Envoi des données au CRM (Make.com) en arrière-plan
-        axios.post(MAKE_CRM_WEBHOOK, {
-            email: req.body.email,
-            whatsapp: req.body.whatsapp,
-            score: analysis.score,
-            diagnostic: analysis.diagnostic,
-        }).catch(err => console.error("Erreur envoi vers Make:", err.message));
+        if (MAKE_CRM_WEBHOOK) {
+            axios.post(MAKE_CRM_WEBHOOK, {
+                email: req.body.email,
+                whatsapp: req.body.whatsapp,
+                score: analysis.score,
+                diagnostic: analysis.diagnostic,
+            }).catch(err => console.error("Erreur envoi vers Make:", err.message));
+        }
 
         // On renvoie le score au site web de l'utilisateur
         res.status(200).json(analysis);
 
     } catch (error) {
         console.error("Erreur serveur:", error);
+        // Si l'erreur vient de la clé API, on l'affiche clairement dans les logs Render
         res.status(500).json({ error: "Erreur lors de l'analyse IA." });
     }
 });
