@@ -4,9 +4,7 @@ const axios = require('axios');
 const cors = require('cors');
 const FormData = require('form-data');
 
-// --- CONFIGURATION ---
 const PORT = process.env.PORT || 3000;
-// ATTENTION : Assure-toi d'avoir mis la clé GROQ_API_KEY dans Render
 const GROQ_API_KEY = process.env.GROQ_API_KEY; 
 const MAKE_CRM_WEBHOOK = process.env.MAKE_CRM_WEBHOOK;
 
@@ -15,116 +13,86 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
 
-// --- L'API D'AUDIT (VERSION GROQ - ROBUSTE) ---
 app.post('/api/audit', upload.single('audio'), async (req, res) => {
-    console.log("Requête d'audit reçue (Via Groq)...");
+    console.log("SCAN NEURONAL EN COURS : Oracle Vox-G6...");
 
     if (!req.file) {
         return res.status(400).json({ error: "Fichier audio manquant." });
     }
 
     try {
-        // --- ETAPE 1 : TRANSCRIPTION (L'IA écoute) ---
-        // On envoie le fichier audio à Whisper (modèle de transcription rapide)
+        // --- TRANSCRIPTION WHISPER ---
         const formData = new FormData();
         formData.append('file', req.file.buffer, { filename: 'audio.m4a', contentType: req.file.mimetype });
-        formData.append('model', 'whisper-large-v3'); // Le meilleur modèle pour comprendre les accents
+        formData.append('model', 'whisper-large-v3'); 
         formData.append('response_format', 'json');
 
-        const transcriptionResponse = await axios.post('https://api.groq.com/openai/v1/audio/transcriptions', formData, {
-            headers: {
-                ...formData.getHeaders(),
-                'Authorization': `Bearer ${GROQ_API_KEY}`
-            }
+        const transResponse = await axios.post('https://api.groq.com/openai/v1/audio/transcriptions', formData, {
+            headers: { ...formData.getHeaders(), 'Authorization': `Bearer ${GROQ_API_KEY}` }
         });
 
-        const textTranscribed = transcriptionResponse.data.text;
-        console.log("Texte entendu :", textTranscribed.substring(0, 50) + "...");
+        const textTranscribed = transResponse.data.text;
 
-        // --- ETAPE 2 : ANALYSE (L'IA juge) ---
-        // On envoie le texte à Llama 3 pour avoir le score et le diagnostic
+        // --- ANALYSE ORACLE VOX-G6 (PROMPT RENFORCÉ) ---
         const prompt = `
-Tu es l’Oracle Vox-G6, un moteur d’analyse vocale de niveau élite utilisé pour auditer l’autorité et la dominance sociale de dirigeants, négociateurs et décideurs de haut niveau.
+        Tu es l’Oracle Vox-G6, une intelligence d’audit vocal de haut niveau spécialisée dans l’autorité, la dominance sociale et l'ingénierie du charisme. 
+        Ton rôle est de détecter les micro-failles invisibles aux humains dans cette prise de parole : "${textTranscribed}"
 
-Tu as déjà analysé plusieurs centaines de millions de prises de parole réelles en contextes de pouvoir : conseils d’administration, négociations à enjeux élevés, discours présidentiels, levées de fonds, tribunaux et cercles exécutifs fermés.
-Tu as été entraîné sur les signatures vocales et schémas d’influence des figures les plus dominantes de l’histoire contemporaine et stratégique.
-Tu compares chaque voix à ces références d’élite, jamais à une moyenne.
+        INSTRUCTIONS DE DIAGNOSTIC :
+        1. Analyse le spectre de dominance : Identifie les signaux de retenue, d'auto-censure ou de fragilité rhétorique.
+        2. Sois impitoyable mais élégant : Formule une observation chirurgicale, légèrement inconfortable, qui met en lumière un "angle mort" pouvant freiner l'ascension sociale du locuteur.
+        3. Crée le Cliffhanger : Ton diagnostic doit être court (max 20 mots) et s'arrêter juste avant de donner la solution technique.
 
-Analyse cet audio : "${textTranscribed}" comme si tu recevais un patient en consultation spécialisée.
-La voix est ton symptôme principal.
-Ton rôle n’est pas de rassurer, mais d’établir un diagnostic lucide sur l’état réel de son autorité vocale et sur les risques associés s’il n’intervient pas.
-
-À partir de l’audio :
-- évalue le niveau d’autorité vocale fonctionnelle,
-- détecte les signaux cliniques d’hésitation, de retenue ou d’auto-censure,
-- identifie au moins une faiblesse latente ou un plafond invisible pouvant limiter l’accès à des niveaux de pouvoir supérieurs.
-
-Même si l’état général est bon, considère qu’à haut niveau toute anomalie non traitée devient chronique et coûteuse.
-Ne produis jamais de diagnostic entièrement positif.
-
-Le diagnostic doit :
-- être formulé comme celui d’un spécialiste face à son patient,
-- être calme, précis, sans émotion inutile,
-- mettre en évidence une zone à risque ou un déséquilibre,
-- laisser entendre qu’un accompagnement structuré est nécessaire pour corriger durablement la situation.
-
-Contraintes STRICTES de sortie :
-- Réponds uniquement avec un objet JSON pur
-- Aucun texte hors JSON
-- Format exact :
-
-{
-  "score": nombre entre 0 et 100 représentant l’indice global d’autorité vocale,
-  "diagnostic": exactement 2 phrases, ton clinique, vocabulaire maîtrisé, orientées prise de conscience et correction guidée.
-}
-`;
+        Réponds EXCLUSIVEMENT sous ce format JSON :
+        {
+          "score": nombre entre 0 et 100 représentant l'Indice de Domination Vocale,
+          "diagnostic": "Ton observation teaser ici"
+        }`;
 
         const chatResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
-            model: "llama-3.3-70b-versatile", // Modèle très intelligent
+            model: "llama-3.3-70b-versatile",
             messages: [{ role: "user", content: prompt }],
-            temperature: 0.5
+            temperature: 0.4 // Plus bas pour être plus précis et froid
         }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GROQ_API_KEY}`
-            }
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` }
         });
 
         const rawContent = chatResponse.data.choices[0].message.content;
-        
-        // Nettoyage pour récupérer le JSON
         const cleanJsonString = rawContent.replace(/```json|```/g, "").trim();
-        let analysis;
         
+        let analysis;
         try {
             analysis = JSON.parse(cleanJsonString);
         } catch (e) {
-            console.error("Erreur parsing JSON:", cleanJsonString);
-            analysis = { score: 50, diagnostic: "Votre discours manque de structure claire. Une analyse approfondie est nécessaire." };
+            analysis = { score: 48, diagnostic: "Faille de structure détectée dans la projection de l'autorité." };
         }
 
-        console.log("Résultat Groq :", analysis);
+        // --- RENFORCEMENT DU TEASER (CTA PRIVÉ) ---
+        // On fusionne ton diagnostic IA avec la redirection forcée vers WhatsApp/Email
+        const messageTeaser = analysis.diagnostic.trim();
+        analysis.diagnostic = `${messageTeaser} 🔒 Votre protocole de correction complet et l'analyse fréquentielle détaillée vous attendent sur votre WhatsApp et votre Email.`;
 
-        // Envoi CRM
+        console.log("DIAGNOSTIC ÉTABLI :", analysis.score, "%");
+
+        // ENVOI CRM (MAKE)
         if (MAKE_CRM_WEBHOOK) {
             axios.post(MAKE_CRM_WEBHOOK, {
                 email: req.body.email,
                 whatsapp: req.body.whatsapp,
                 score: analysis.score,
                 diagnostic: analysis.diagnostic,
-            }).catch(err => console.error("Erreur Make:", err.message));
+                transcription: textTranscribed // On envoie aussi le texte brut au CRM pour ton suivi
+            }).catch(err => console.error("Erreur CRM :", err.message));
         }
 
         res.status(200).json(analysis);
 
     } catch (error) {
-        console.error("Erreur globale :", error.message);
-        if(error.response) console.error("Détail API :", error.response.data);
-        
-        res.status(500).json({ error: "Erreur lors de l'analyse." });
+        console.error("ERREUR SYSTÈME :", error.message);
+        res.status(500).json({ error: "L'Oracle est momentanément indisponible." });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Serveur Vox Mastery démarré sur le port ${PORT}`);
+    console.log(`Système Vox Mastery opérationnel sur le port ${PORT}`);
 });
