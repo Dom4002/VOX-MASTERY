@@ -1,95 +1,100 @@
 const express = require('express');
 const multer = require('multer');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const axios = require('axios');
+const axios = require('axios'); // On utilise axios directement
 const cors = require('cors');
 
 // --- CONFIGURATION ---
 const PORT = process.env.PORT || 3000;
-// LECTURE DES VARIABLES D'ENVIRONNEMENT RENDER
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
 const MAKE_CRM_WEBHOOK = process.env.MAKE_CRM_WEBHOOK;
 
-// Initialisation
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() }); 
 
-// --- CORRECTION 1 : Initialisation correcte (chaine directe) ---
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY); 
-
 app.use(cors());
 
-// --- L'API D'AUDIT ---
+// --- L'API D'AUDIT (VERSION "DIRECT REST API") ---
 app.post('/api/audit', upload.single('audio'), async (req, res) => {
-    console.log("Requête d'audit reçue...");
+    console.log("Requête d'audit reçue (Mode Direct)...");
 
     if (!req.file) {
         return res.status(400).json({ error: "Fichier audio manquant." });
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const audioFile = {
-            inlineData: {
-                data: req.file.buffer.toString("base64"),
-                mimeType: req.file.mimetype,
-            },
+        // 1. Préparation du fichier audio en Base64
+        const audioBase64 = req.file.buffer.toString('base64');
+        
+        // 2. Le Prompt
+        const promptText = `Tu es l’Oracle Vox-G6. Analyse cet audio (contexte : réunion stratégique, leadership).
+        Évalue la dominance vocale, les hésitations et les micro-failles.
+        Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
+        {
+          "score": nombre 0-100,
+          "diagnostic": "2 phrases percutantes sur une faille détectée."
+        }`;
+
+        // 3. Construction de la requête MANUELLE pour Gemini 1.5 Flash
+        // On tape directement sur l'URL de Google, sans passer par leur librairie buggée
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        
+        const payload = {
+            contents: [{
+                parts: [
+                    { text: promptText },
+                    { 
+                        inlineData: { 
+                            mimeType: req.file.mimetype, 
+                            data: audioBase64 
+                        } 
+                    }
+                ]
+            }]
         };
 
-        // --- CORRECTION 2 : Utilisation des backticks (`) pour le texte multi-lignes ---
-        const prompt = `Tu es l’Oracle Vox-G6, une intelligence d’audit vocal spécialisée dans l’autorité, la dominance sociale et la crédibilité perçue des leaders.
+        // 4. Envoi de la requête
+        const response = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' }
+        });
 
-Analyse cet audio comme si la voix était observée en contexte réel de pouvoir (réunion stratégique, négociation, prise de parole décisive).
-
-Évalue :
-- le niveau de dominance vocale réelle (et non perçue par le locuteur),
-- les signaux d’hésitation, de retenue ou d’auto-censure,
-- les micro-failles vocales qui peuvent inconsciemment réduire l’impact, le respect ou l’influence.
-
-Même si le niveau est élevé, identifie TOUJOURS au moins une faiblesse subtile, un angle mort ou un risque latent pouvant freiner l’ascension du locuteur à plus haut niveau de pouvoir.
-
-Le diagnostic doit être formulé de manière engageante, légèrement inconfortable, orientée vers la prise de conscience et l’amélioration par accompagnement.
-
-Réponds UNIQUEMENT avec un objet JSON pur, sans texte additionnel :
-{
-  "score": nombre entre 0 et 100 représentant l’indice global d’autorité vocale,
-  "diagnostic": "exactement 2 phrases, claires, percutantes, qui mettent en lumière une faille exploitable et suggèrent implicitement qu’un travail guidé permettrait de la corriger."
-}`;
-
-        const result = await model.generateContent([prompt, audioFile]);
-        const responseText = result.response.text();
+        // 5. Extraction du résultat
+        const rawText = response.data.candidates[0].content.parts[0].text;
         
-        // Nettoyage de la réponse de l'IA pour être sûr d'avoir un JSON valide
-        const cleanJsonString = responseText.replace(/```json|```/g, "").trim();
-        
+        // Nettoyage du JSON
+        const cleanJsonString = rawText.replace(/```json|```/g, "").trim();
         let analysis;
+        
         try {
             analysis = JSON.parse(cleanJsonString);
         } catch (e) {
-            console.error("Erreur de parsing JSON:", cleanJsonString);
-            // Fallback si l'IA échoue à renvoyer du JSON pur
-            analysis = { score: 50, diagnostic: "Analyse complexe. Une écoute par un expert humain est recommandée." };
+            console.error("Erreur JSON:", cleanJsonString);
+            analysis = { score: 55, diagnostic: "Analyse audio effectuée, mais formatage complexe. Une réécoute est conseillée." };
         }
 
-        console.log("Analyse Gemini terminée :", analysis);
+        console.log("Résultat Gemini :", analysis);
 
-        // Envoi des données au CRM (Make.com) en arrière-plan
+        // Envoi CRM
         if (MAKE_CRM_WEBHOOK) {
             axios.post(MAKE_CRM_WEBHOOK, {
                 email: req.body.email,
                 whatsapp: req.body.whatsapp,
                 score: analysis.score,
                 diagnostic: analysis.diagnostic,
-            }).catch(err => console.error("Erreur envoi vers Make:", err.message));
+            }).catch(err => console.error("Erreur Make:", err.message));
         }
 
-        // On renvoie le score au site web de l'utilisateur
         res.status(200).json(analysis);
 
     } catch (error) {
-        console.error("Erreur serveur:", error);
-        // Si l'erreur vient de la clé API, on l'affiche clairement dans les logs Render
-        res.status(500).json({ error: "Erreur lors de l'analyse IA." });
+        // Gestion détaillée des erreurs Google
+        if (error.response) {
+            console.error("Erreur Google API:", error.response.data);
+            console.error("Détail:", JSON.stringify(error.response.data.error, null, 2));
+            return res.status(500).json({ error: "Erreur IA : " + (error.response.data.error.message || "Refus de traitement") });
+        } else {
+            console.error("Erreur Serveur:", error.message);
+            return res.status(500).json({ error: "Erreur interne du serveur." });
+        }
     }
 });
 
