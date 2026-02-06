@@ -19,6 +19,7 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: "Fichier audio manquant." });
     }
+    const userName = req.body.name || "Leader"; 
 
     try {
         // --- TRANSCRIPTION WHISPER ---
@@ -107,6 +108,7 @@ Format exact attendu :
         // ENVOI CRM (MAKE)
         if (MAKE_CRM_WEBHOOK) {
             axios.post(MAKE_CRM_WEBHOOK, {
+                name: userName, // <--- AJOUTÉ
                 email: req.body.email,
                 whatsapp: req.body.whatsapp,
                 score: analysis.score,
