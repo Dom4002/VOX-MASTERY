@@ -28,7 +28,7 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });        
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const audioFile = {
             inlineData: {
                 data: req.file.buffer.toString("base64"),
