@@ -36,7 +36,8 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
 
         // 3. Construction de la requête MANUELLE pour Gemini 1.5 Flash
         // On tape directement sur l'URL de Google, sans passer par leur librairie buggée
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+// NOUVELLE LIGNE (Solution 1)
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
         
         const payload = {
             contents: [{
