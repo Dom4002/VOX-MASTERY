@@ -2,10 +2,12 @@ const express = require('express');
 const multer = require('multer');
 const axios = require('axios');
 const cors = require('cors');
+const FormData = require('form-data');
 
 // --- CONFIGURATION ---
 const PORT = process.env.PORT || 3000;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; 
+// ATTENTION : Assure-toi d'avoir mis la clé GROQ_API_KEY dans Render
+const GROQ_API_KEY = process.env.GROQ_API_KEY; 
 const MAKE_CRM_WEBHOOK = process.env.MAKE_CRM_WEBHOOK;
 
 const app = express();
@@ -13,68 +15,71 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
 
-// --- L'API D'AUDIT (VERSION DIRECTE - MODELE PRO) ---
+// --- L'API D'AUDIT (VERSION GROQ - ROBUSTE) ---
 app.post('/api/audit', upload.single('audio'), async (req, res) => {
-    console.log("Requête d'audit reçue (Mode Direct Pro)...");
+    console.log("Requête d'audit reçue (Via Groq)...");
 
     if (!req.file) {
         return res.status(400).json({ error: "Fichier audio manquant." });
     }
 
     try {
-        // 1. Encodage Audio
-        const audioBase64 = req.file.buffer.toString('base64');
-        
-        // 2. Le Prompt
-        const promptText = `Tu es l’Oracle Vox-G6. Analyse cet audio (contexte : réunion stratégique, leadership).
-        Évalue la dominance vocale, les hésitations et les micro-failles.
-        Réponds UNIQUEMENT avec ce JSON (rien d'autre) :
-        {
-          "score": nombre 0-100,
-          "diagnostic": "2 phrases percutantes sur une faille détectée."
-        }`;
+        // --- ETAPE 1 : TRANSCRIPTION (L'IA écoute) ---
+        // On envoie le fichier audio à Whisper (modèle de transcription rapide)
+        const formData = new FormData();
+        formData.append('file', req.file.buffer, { filename: 'audio.m4a', contentType: req.file.mimetype });
+        formData.append('model', 'whisper-large-v3'); // Le meilleur modèle pour comprendre les accents
+        formData.append('response_format', 'json');
 
-        // 3. URL CIBLE : On utilise 'gemini-1.5-pro' car 'flash' pose problème sur ton compte
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`;
-        
-        const payload = {
-            contents: [{
-                parts: [
-                    { text: promptText },
-                    { 
-                        inlineData: { 
-                            mimeType: req.file.mimetype, 
-                            data: audioBase64 
-                        } 
-                    }
-                ]
-            }]
-        };
-
-        // 4. Appel API via Axios
-        const response = await axios.post(url, payload, {
-            headers: { 'Content-Type': 'application/json' }
+        const transcriptionResponse = await axios.post('https://api.groq.com/openai/v1/audio/transcriptions', formData, {
+            headers: {
+                ...formData.getHeaders(),
+                'Authorization': `Bearer ${GROQ_API_KEY}`
+            }
         });
 
-        // 5. Traitement Réponse
-        if (!response.data || !response.data.candidates || !response.data.candidates[0]) {
-             throw new Error("Réponse vide de Google.");
-        }
+        const textTranscribed = transcriptionResponse.data.text;
+        console.log("Texte entendu :", textTranscribed.substring(0, 50) + "...");
 
-        const rawText = response.data.candidates[0].content.parts[0].text;
+        // --- ETAPE 2 : ANALYSE (L'IA juge) ---
+        // On envoie le texte à Llama 3 pour avoir le score et le diagnostic
+        const prompt = `
+        Tu es l’Oracle Vox-G6. Voici la transcription d'une prise de parole d'un leader : "${textTranscribed}"
         
-        // Nettoyage JSON
-        const cleanJsonString = rawText.replace(/```json|```/g, "").trim();
+        Analyse la syntaxe, la longueur des phrases, les hésitations (euh, hum) et la clarté.
+        Agis comme un expert impitoyable.
+        
+        Réponds UNIQUEMENT avec ce JSON pur :
+        {
+          "score": nombre entre 0 et 100 (sois sévère),
+          "diagnostic": "2 phrases percutantes sur une faille rhétorique ou de confiance détectée dans ce texte."
+        }`;
+
+        const chatResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
+            model: "llama-3.3-70b-versatile", // Modèle très intelligent
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.5
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GROQ_API_KEY}`
+            }
+        });
+
+        const rawContent = chatResponse.data.choices[0].message.content;
+        
+        // Nettoyage pour récupérer le JSON
+        const cleanJsonString = rawContent.replace(/```json|```/g, "").trim();
         let analysis;
         
         try {
             analysis = JSON.parse(cleanJsonString);
         } catch (e) {
             console.error("Erreur parsing JSON:", cleanJsonString);
-            analysis = { score: 60, diagnostic: "Votre voix porte, mais le système détecte une irrégularité technique. Contactez un mentor." };
+            analysis = { score: 50, diagnostic: "Votre discours manque de structure claire. Une analyse approfondie est nécessaire." };
         }
 
-        console.log("Résultat Gemini Pro :", analysis);
+        console.log("Résultat Groq :", analysis);
 
         // Envoi CRM
         if (MAKE_CRM_WEBHOOK) {
@@ -89,15 +94,10 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         res.status(200).json(analysis);
 
     } catch (error) {
-        if (error.response) {
-            // Erreur renvoyée par Google
-            console.error("ERREUR GOOGLE API:", JSON.stringify(error.response.data, null, 2));
-            return res.status(500).json({ error: "Erreur IA: " + (error.response.data.error?.message || "Erreur inconnue") });
-        } else {
-            // Erreur serveur interne
-            console.error("Erreur Serveur:", error.message);
-            return res.status(500).json({ error: "Erreur interne du serveur." });
-        }
+        console.error("Erreur globale :", error.message);
+        if(error.response) console.error("Détail API :", error.response.data);
+        
+        res.status(500).json({ error: "Erreur lors de l'analyse." });
     }
 });
 
