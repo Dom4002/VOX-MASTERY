@@ -24,6 +24,14 @@ const generateFullHTMLReport = (name, score, data) => {
     }).join('');
 
     return `
+const generateFullHTMLReport = (name, score, data) => {
+    const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    
+    const stepsHtml = data.steps.map(step => {
+        return `<li style="margin-bottom: 8px; color: #ffffff;">${step}</li>`;
+    }).join('');
+
+    return `
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -32,71 +40,67 @@ const generateFullHTMLReport = (name, score, data) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 </head>
 <body style="margin: 0; padding: 0; background-color: #020202; font-family: Arial, sans-serif;">
-    <!-- Conteneur Principal pour forcer le fond noir -->
     <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #020202;">
         <tr>
-            <td align="center" style="padding: 40px 0 40px 0;">
+            <td align="center" style="padding: 20px 0;">
                 
-                <!-- Table de contenu (Bordure Or) -->
-                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #0a0a0a; border: 1px solid #AF8936; border-top: 5px solid #AF8936;">
+                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #0a0a0a; border: 1px solid #AF8936; border-top: 4px solid #AF8936;">
                     
-                    <!-- Header -->
+                    <!-- Header - Plus compact -->
                     <tr>
-                        <td align="center" style="padding: 40px 0 30px 0; border-bottom: 1px solid rgba(175, 137, 54, 0.2);">
-                            <p style="margin: 0; font-size: 10px; letter-spacing: 5px; color: #AF8936; text-transform: uppercase;">Analyse Confidentielle</p>
-                            <h1 style="margin: 20px 0 0 0; color: #ffffff; font-size: 32px; letter-spacing: 2px;">VOX MASTERY</h1>
-                            <p style="margin: 5px 0 0 0; font-size: 12px; color: #6b7280;">Bilan du ${dateStr}</p>
+                        <td align="center" style="padding: 25px 0 20px 0; border-bottom: 1px solid rgba(175, 137, 54, 0.2);">
+                            <p style="margin: 0; font-size: 9px; letter-spacing: 4px; color: #AF8936; text-transform: uppercase;">Analyse Confidentielle</p>
+                            <h1 style="margin: 10px 0 0 0; color: #ffffff; font-size: 26px; letter-spacing: 1px;">VOX MASTERY</h1>
+                            <p style="margin: 5px 0 0 0; font-size: 11px; color: #6b7280;">Bilan du ${dateStr}</p>
                         </td>
                     </tr>
 
                     <!-- Corps du message -->
                     <tr>
-                        <td style="padding: 40px; color: #d1d5db; font-size: 16px; line-height: 24px;">
-                            <p style="color: #ffffff;">Cher <strong>${name}</strong>,</p>
-                            <p>Votre analyse est terminée. Voici les failles et leviers de puissance détectés dans votre signature vocale.</p>
+                        <td style="padding: 25px 40px; color: #d1d5db; font-size: 15px; line-height: 22px;">
+                            <p style="color: #ffffff; margin-top: 0;">Cher <strong>${name}</strong>,</p>
+                            <p style="margin-bottom: 0;">Votre analyse est terminée. Voici les leviers de puissance détectés dans votre signature vocale.</p>
 
-                            <!-- Score Box -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 30px 0; background-color: #020202; border: 1px solid #AF8936;">
+                            <!-- Score Box - Moins de marges -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 20px 0; background-color: #020202; border: 1px solid #AF8936;">
                                 <tr>
-                                    <td align="center" style="padding: 30px;">
-                                        <p style="margin: 0; font-size: 12px; text-transform: uppercase; color: #d1d5db; letter-spacing: 2px;">Indice d'Autorité Vocale</p>
-                                        <h2 style="font-size: 72px; font-weight: bold; color: #AF8936; margin: 10px 0;">${score}%</h2>
-                                        <p style="margin: 0; font-size: 14px; color: #AF8936; font-weight: bold;">${score > 60 ? 'POTENTIEL EXÉCUTIF DÉTECTÉ' : 'SEUIL D\'AUTORITÉ À DÉVERROUILLER'}</p>
+                                    <td align="center" style="padding: 20px;">
+                                        <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #d1d5db; letter-spacing: 2px;">Indice d'Autorité Vocale</p>
+                                        <h2 style="font-size: 60px; font-weight: bold; color: #AF8936; margin: 5px 0;">${score}%</h2>
+                                        <p style="margin: 0; font-size: 12px; color: #AF8936; font-weight: bold; text-transform: uppercase;">${score > 60 ? 'Potentiel Exécutif Détecté' : 'Seuil d\'Autorité à Déverrouiller'}</p>
                                     </td>
                                 </tr>
                             </table>
 
-                            <!-- Section 01 -->
-                            <h3 style="color: #AF8936; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px; margin-top: 40px;">01. Bilan & Observations</h3>
-                            <p style="color: #ffffff;">${data.facts}</p>
+                            <!-- Sections - Espacements réduits -->
+                            <h3 style="color: #AF8936; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px; margin: 25px 0 10px 0;">01. Bilan & Observations</h3>
+                            <p style="color: #ffffff; margin: 0;">${data.facts}</p>
 
-                            <!-- Section 02 -->
-                            <h3 style="color: #AF8936; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px; margin-top: 40px;">02. Enjeux Stratégiques</h3>
-                            <p style="color: #ffffff;">${data.consequences}</p>
+                            <h3 style="color: #AF8936; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px; margin: 25px 0 10px 0;">02. Enjeux Stratégiques</h3>
+                            <p style="color: #ffffff; margin: 0;">${data.consequences}</p>
 
                             <!-- Alert Box -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #4A0404; border-left: 4px solid #AF8936; margin: 30px 0;">
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #4A0404; border-left: 3px solid #AF8936; margin: 20px 0;">
                                 <tr>
-                                    <td style="padding: 20px; color: #ffffff; font-size: 14px;">
+                                    <td style="padding: 15px; color: #ffffff; font-size: 13px;">
                                         <strong>VIGILANCE :</strong> ${data.risk}
                                     </td>
                                 </tr>
                             </table>
 
-                            <!-- Section 03 -->
-                            <h3 style="color: #AF8936; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px; margin-top: 40px;">03. Plan d'Action</h3>
-                            <ul style="padding-left: 20px; color: #ffffff;">
+                            <h3 style="color: #AF8936; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid rgba(175, 137, 54, 0.2); padding-bottom: 5px; margin: 25px 0 10px 0;">03. Plan d'Action</h3>
+                            <ul style="padding-left: 20px; color: #ffffff; margin: 10px 0;">
                                 ${stepsHtml}
                             </ul>
 
-                            <!-- Bouton CTA -->
-                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 50px;">
+                            <!-- Bouton CTA - Plus proche du contenu -->
+                            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 35px;">
                                 <tr>
                                     <td align="center">
                                         <table border="0" cellpadding="0" cellspacing="0">
                                             <tr>
-                                                <td align="center" bgcolor="#AF8936" style="padding: 15px 30px;">
-                                                    <a href="https://votre-site.com#application" style="color: #020202; font-weight: bold; text-decoration: none; text-transform: uppercase; font-size: 13px; letter-spacing: 1px;">Accéder au Mentorat d'Élite</a>
+                                                <td align="center" bgcolor="#AF8936" style="padding: 14px 28px;">
+                                                    <a href="https://votre-site.com#application" style="color: #020202; font-weight: bold; text-decoration: none; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Accéder au Mentorat d'Élite</a>
                                                 </td>
                                             </tr>
                                         </table>
@@ -109,8 +113,8 @@ const generateFullHTMLReport = (name, score, data) => {
 
                     <!-- Footer -->
                     <tr>
-                        <td align="center" style="padding: 30px; font-size: 10px; color: #4b5563; text-transform: uppercase; letter-spacing: 2px;">
-                            Vox Mastery © 2026 — Systèmes de Rhétorique de Haut Niveau
+                        <td align="center" style="padding: 20px 0 30px 0; font-size: 9px; color: #4b5563; text-transform: uppercase; letter-spacing: 2px;">
+                            Vox Mastery © 2026 — Systèmes de Rhétorique
                         </td>
                     </tr>
                 </table>
