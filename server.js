@@ -147,8 +147,6 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
             return res.status(200).json(failData);
         }
 
-        // --- PROMPT AVEC SOUS-SCORES ---
-        const prompt = `
 const prompt = `
 Vous êtes le Mentor Senior Vox Mastery, spécialiste de l’autorité vocale et de la prise de parole à haut niveau.
 Depuis des années, vous accompagnez des dirigeants, cadres et profils à fort potentiel dont la voix constitue un levier stratégique encore sous-exploité.
@@ -196,6 +194,10 @@ FORMAT DE SORTIE STRICT (JSON uniquement, aucun texte hors JSON) :
 }
 `;
 
+
+
+
+        
         const chatResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
             messages: [{ role: "user", content: prompt }],
