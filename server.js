@@ -11,6 +11,7 @@ const MAKE_CRM_WEBHOOK = process.env.MAKE_CRM_WEBHOOK;
 
 const app = express();
 
+// Configuration Multer : 25MB
 const upload = multer({ 
     storage: multer.memoryStorage(),
     limits: { fileSize: 25 * 1024 * 1024 } 
@@ -19,11 +20,13 @@ const upload = multer({
 app.use(cors());
 app.use(express.json());
 
-// --- GÉNÉRATEUR RAPPORT HTML (Avec les sous-scores) ---
+// --- GÉNÉRATEUR RAPPORT HTML ---
 const generateFullHTMLReport = (name, score, data) => {
     const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     
-    const stepsHtml = data.steps.map(step => `<li style="margin-bottom: 8px; color: #ffffff;">${step}</li>`).join('');
+    // Protection si data.steps est vide
+    const stepsList = Array.isArray(data.steps) ? data.steps : ["Travailler le débit", "Poser la voix", "Améliorer l'articulation"];
+    const stepsHtml = stepsList.map(step => `<li style="margin-bottom: 8px; color: #ffffff;">${step}</li>`).join('');
 
     return `
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -55,12 +58,11 @@ const generateFullHTMLReport = (name, score, data) => {
                                     <td align="center" style="padding: 20px;">
                                         <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #d1d5db; letter-spacing: 2px;">Indice d'Autorité Vocale</p>
                                         <h2 style="font-size: 60px; font-weight: bold; color: #AF8936; margin: 5px 0;">${score}%</h2>
-                                        <p style="margin: 0; font-size: 12px; color: #AF8936; font-weight: bold; text-transform: uppercase;">${score > 60 ? 'Potentiel Exécutif' : 'Niveau Insuffisant'}</p>
                                     </td>
                                 </tr>
                             </table>
 
-                            <!-- Détails des Jauges dans l'Email -->
+                            <!-- Détails des Jauges -->
                             <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
                                 <tr>
                                     <td width="33%" align="center" style="color:#AF8936; font-size:10px;">AUTORITÉ<br><strong style="font-size:18px;">${data.authority}%</strong></td>
@@ -121,11 +123,17 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
     const userName = req.body.name || "Leader";
     const userWhatsapp = req.body.whatsapp ? req.body.whatsapp.replace(/\+/g, '') : '';
     
-    if (!req.file) return res.status(400).json({ error: "Fichier audio manquant." });
+    if (!req.file) {
+        console.error("Aucun fichier reçu");
+        return res.status(400).json({ error: "Fichier audio manquant." });
+    }
 
     try {
+        console.log("Fichier reçu, taille:", req.file.size);
+
+        // 1. Transcription (Nom de fichier .webm pour compatibilité navigateur)
         const formData = new FormData();
-        formData.append('file', req.file.buffer, { filename: 'audio.m4a', contentType: req.file.mimetype });
+        formData.append('file', req.file.buffer, { filename: 'audio.webm', contentType: req.file.mimetype });
         formData.append('model', 'whisper-large-v3'); 
         formData.append('response_format', 'json');
 
@@ -134,70 +142,65 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         });
 
         let textTranscribed = transResponse.data.text ? transResponse.data.text.trim() : "";
+        console.log("TEXTE ENTENDU :", textTranscribed);
         
-        // --- CAS D'ERREUR (AUDIO VIDE) ---
-        if (textTranscribed.length < 50) {
-            const failData = {
-                score: 10,
-                authority: 15,
-                clarity: 20,
-                silence: 5,
-                diagnostic: "⚠️ Analyse impossible. L'enregistrement est trop court ou inaudible."
-            };
-            return res.status(200).json(failData);
+        // 2. Gatekeeper : Seuil à 10 caractères pour éviter les analyses vides
+        if (textTranscribed.length < 10) {
+            console.log("Rejeté : Texte trop court");
+            return res.status(200).json({
+                score: 10, authority: 15, clarity: 20, silence: 5,
+                diagnostic: "⚠️ L'enregistrement est trop court ou silencieux. Parlez au moins 10 secondes pour une analyse fiable."
+            });
         }
 
-const prompt = `
-Vous êtes le Mentor Senior Vox Mastery, spécialiste de l’autorité vocale et de la prise de parole à haut niveau.
-Depuis des années, vous accompagnez des dirigeants, cadres et profils à fort potentiel dont la voix constitue un levier stratégique encore sous-exploité.
+        // 3. Prompt (VERSION ORIGINALE STRICTE)
+        const prompt = `
+        Vous êtes le Mentor Senior Vox Mastery, spécialiste de l’autorité vocale et de la prise de parole à haut niveau.
+        Depuis des années, vous accompagnez des dirigeants, cadres et profils à fort potentiel dont la voix constitue un levier stratégique encore sous-exploité.
 
-Vous avez analysé et comparé des centaines de milliers de discours professionnels réels, et votre référentiel n’est jamais la moyenne.
-Vous évaluez toujours une voix par rapport aux standards requis dans des environnements où l’autorité, la clarté et la maîtrise du rythme conditionnent l’influence réelle.
+        Vous avez analysé et comparé des centaines de milliers de discours professionnels réels, et votre référentiel n’est jamais la moyenne.
+        Vous évaluez toujours une voix par rapport aux standards requis dans des environnements où l’autorité, la clarté et la maîtrise du rythme conditionnent l’influence réelle.
 
-Analysez avec attention la transcription suivante :
-"${textTranscribed}"
+        Analysez avec attention la transcription suivante :
+        "${textTranscribed}"
 
-ADOPTEZ UNE POSTURE HUMAINE ET EXPERTE :
-Vous vous adressez à un professionnel intelligent, compétent, mais perfectible.
-Votre rôle n’est pas de juger, ni de flatter, mais de mettre en lumière ce que la voix révèle — et ce qu’elle limite encore.
+        ADOPTEZ UNE POSTURE HUMAINE ET EXPERTE :
+        Vous vous adressez à un professionnel intelligent, compétent, mais perfectible.
+        Votre rôle n’est pas de juger, ni de flatter, mais de mettre en lumière ce que la voix révèle — et ce qu’elle limite encore.
 
-RÈGLES DE SCORING (IMPORTANTES) :
-- Les scores doivent rester globalement bas : ils mesurent un écart vers l’élite, pas un niveau scolaire.
-- Un score global supérieur à 65 est rare et exceptionnel.
-- Les sous-scores doivent être cohérents entre eux (autorité, clarté, silence).
+        RÈGLES DE SCORING (IMPORTANTES) :
+        - Les scores doivent rester globalement bas : ils mesurent un écart vers l’élite, pas un niveau scolaire.
+        - Un score global supérieur à 65 est rare et exceptionnel.
+        - Les sous-scores doivent être cohérents entre eux (autorité, clarté, silence).
 
-INSTRUCTIONS D’ANALYSE :
-1. Évaluez l’autorité vocale réelle : assurance, stabilité, capacité à imposer un cadre.
-2. Analysez la clarté : structure, lisibilité, logique du propos.
-3. Analysez la gestion du rythme et des silences : respiration, pauses, accélérations.
-4. Identifiez une limite principale qui freine l’impact global, même si le niveau est correct.
-5. Citez au moins une phrase exacte de la transcription pour appuyer votre analyse factuelle.
+        INSTRUCTIONS D’ANALYSE :
+        1. Évaluez l’autorité vocale réelle : assurance, stabilité, capacité à imposer un cadre.
+        2. Analysez la clarté : structure, lisibilité, logique du propos.
+        3. Analysez la gestion du rythme et des silences : respiration, pauses, accélérations.
+        4. Identifiez une limite principale qui freine l’impact global, même si le niveau est correct.
+        5. Citez au moins une phrase exacte de la transcription pour appuyer votre analyse factuelle.
 
-TON À ADOPTER :
-- professionnel, posé, humain
-- exigeant mais respectueux
-- lucide, jamais brutal
-- orienté prise de conscience et progression
+        TON À ADOPTER :
+        - professionnel, posé, humain
+        - exigeant mais respectueux
+        - lucide, jamais brutal
+        - orienté prise de conscience et progression
 
-FORMAT DE SORTIE STRICT (JSON uniquement, aucun texte hors JSON) :
+        FORMAT DE SORTIE STRICT (JSON uniquement, aucun texte hors JSON) :
 
-{
-  "score": nombre entre 25 et 65 représentant l’indice global d’autorité vocale selon les standards Vox Mastery,
-  "authority": nombre entre 20 et 70,
-  "clarity": nombre entre 20 et 70,
-  "silence": nombre entre 15 et 65,
-  "teaser": phrase courte et engageante destinée à éveiller la curiosité,
-  "facts": analyse factuelle appuyée par au moins une citation exacte de la transcription,
-  "consequences": conséquence concrète et réaliste sur l’impact professionnel ou décisionnel,
-  "risk": risque principal à moyen terme si cette limite persiste,
-  "steps": tableau de 3 recommandations formulées comme des axes de travail, sans entrer dans la technique.
-}
-`;
+        {
+          "score": nombre entre 25 et 65 représentant l’indice global d’autorité vocale selon les standards Vox Mastery,
+          "authority": nombre entre 20 et 70,
+          "clarity": nombre entre 20 et 70,
+          "silence": nombre entre 15 et 65,
+          "teaser": phrase courte et engageante destinée à éveiller la curiosité,
+          "facts": analyse factuelle appuyée par au moins une citation exacte de la transcription,
+          "consequences": conséquence concrète et réaliste sur l’impact professionnel ou décisionnel,
+          "risk": risque principal à moyen terme si cette limite persiste,
+          "steps": tableau de 3 recommandations formulées comme des axes de travail, sans entrer dans la technique.
+        }
+        `;
 
-
-
-
-        
         const chatResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
             messages: [{ role: "user", content: prompt }],
@@ -211,13 +214,14 @@ FORMAT DE SORTIE STRICT (JSON uniquement, aucun texte hors JSON) :
             const content = chatResponse.data.choices[0].message.content.replace(/```json|```/g, "").trim();
             analysisData = JSON.parse(content);
         } catch (e) {
+            console.error("Erreur parsing JSON:", e.message);
             analysisData = {
-                score: 40, authority: 45, clarity: 50, silence: 25,
-                teaser: "Structure instable détectée.",
-                facts: "Discours manquant de colonne vertébrale.",
-                consequences: "Perte d'attention immédiate.",
-                risk: "Stagnation.",
-                steps: ["Préparer", "Articuler", "Ralentir"]
+                score: 42, authority: 40, clarity: 45, silence: 30,
+                teaser: "Analyse terminée avec des réserves techniques.",
+                facts: "Le discours a été traité mais la structure manque de force.",
+                consequences: "Impact limité sur l'auditoire.",
+                risk: "Manque de leadership perçu.",
+                steps: ["Structurer le propos", "Articuler davantage", "Ralentir le débit"]
             };
         }
 
@@ -233,7 +237,6 @@ FORMAT DE SORTIE STRICT (JSON uniquement, aucun texte hors JSON) :
             }).catch(err => console.error("Erreur CRM :", err.message));
         }
 
-        // --- ON RENVOIE TOUS LES SCORES AU FRONTEND ---
         res.status(200).json({
             score: analysisData.score,
             authority: analysisData.authority,
@@ -244,6 +247,7 @@ FORMAT DE SORTIE STRICT (JSON uniquement, aucun texte hors JSON) :
 
     } catch (error) {
         console.error("Erreur serveur :", error.message);
+        if(error.response) console.error("Détail API:", error.response.data);
         res.status(500).json({ error: "Service momentanément indisponible." });
     }
 });
