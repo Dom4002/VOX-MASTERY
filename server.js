@@ -263,8 +263,12 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
 
         let analysisData;
         try {
-            const content = chatResponse.data.choices[0].message.content.replace(/```json|```/g, "").trim();
-            analysisData = JSON.parse(content);
+            // --- CORRECTION DU PARSING ICI ---
+            const rawContent = chatResponse.data.choices[0].message.content;
+            const jsonMatch = rawContent.match(/\{[\s\S]*\}/); // Trouve le JSON réel entre les accolades
+            if (!jsonMatch) throw new Error("JSON non trouvé dans la réponse");
+            
+            analysisData = JSON.parse(jsonMatch[0]);
             
             const clamp = (val, min, max) => Math.max(min, Math.min(max, Number(val) || 0));
             
