@@ -20,6 +20,30 @@ const upload = multer({
 app.use(cors());
 app.use(express.json());
 
+// --- ANALYSE BIOMÉTRIQUE TECHNIQUE ---
+const calculateBiometrics = (text, duration) => {
+    // Nettoyer le texte pour compter les mots réels
+    const words = text.split(/\s+/).filter(w => w.length > 2);
+    const wordCount = words.length;
+    
+    // Calcul du WPM (Mots par minute)
+    const durationMin = duration / 60;
+    const wpm = Math.round(wordCount / durationMin) || 0;
+    
+    // Détermination de l'impact physique
+    let impactStatus = "Équilibré";
+    if (wpm > 160) impactStatus = "Nerveux / Instable";
+    if (wpm < 100) impactStatus = "Lent / Manque d'énergie";
+    if (wpm >= 110 && wpm <= 150) impactStatus = "Leadership / Autorité";
+
+    return { wpm, impactStatus, wordCount };
+};
+
+
+
+
+
+
 // --- GÉNÉRATEUR RAPPORT HTML ---
 const generateFullHTMLReport = (name, score, data) => {
     const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -118,11 +142,17 @@ const generateFullHTMLReport = (name, score, data) => {
 </html>`;
 };
 
+
+
+
 // --- API AUDIT ---
 app.post('/api/audit', upload.single('audio'), async (req, res) => {
     const userName = req.body.name || "Leader";
     const userWhatsapp = req.body.whatsapp ? req.body.whatsapp.replace(/\+/g, '') : '';
     
+    // 1. RÉCUPÉRATION DE LA DURÉE (Ajout pour la précision biométrique)
+    const duration = parseInt(req.body.duration) || 20;
+
     if (!req.file) {
         return res.status(400).json({ error: "Fichier audio manquant." });
     }
@@ -130,7 +160,6 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
     if (!req.file.mimetype.startsWith("audio/")) {
         return res.status(400).json({ error: "Format audio invalide." });
     }
-
 
     try {
         console.log("Fichier reçu, taille:", req.file.size);
@@ -146,10 +175,8 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         });
 
         let textTranscribed = transResponse.data.text ? transResponse.data.text.trim() : "";
-        console.log("TEXTE BRUT :", textTranscribed);
-
-        // --- NETTOYAGE TECHNIQUE (Code) ---
-        // On retire les parasites connus de Whisper quand c'est vide
+        
+        // --- NETTOYAGE TECHNIQUE ---
         const hallucinations = ["Sous-titres", "Amara.org", "Thank you", "MBC", "L'invité", "Copyright"];
         let cleanText = textTranscribed;
         hallucinations.forEach(h => {
@@ -157,41 +184,45 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         });
         cleanText = cleanText.trim();
 
-        // Gatekeeper : Si moins de 3 mots réels, on rejette AVANT d'appeler l'IA (économie + sécurité)
-        // Gatekeeper renforcé : contenu réellement exploitable
-        const words = cleanText.split(/\s+/).filter(w => w.length > 2);
-        const wordCount = words.length;
-        const uniqueWords = new Set(words.map(w => w.toLowerCase()));
+        // 2. CALCULS BIOMÉTRIQUES RÉELS (La "Vérité" mathématique)
+        const wordsArr = cleanText.split(/\s+/).filter(w => w.length > 2);
+        const wordCount = wordsArr.length;
+        const wpm = Math.round(wordCount / (duration / 60)) || 0;
         
-        if (
-            cleanText.length < 40 ||   // trop court
-            wordCount < 15 ||          // pas assez de mots
-            uniqueWords.size < 8       // trop répétitif / pauvre
-        ) {
+        let impactStatus = "Équilibré";
+        if (wpm > 160) impactStatus = "Urgence / Nervosité (Trop rapide)";
+        else if (wpm < 100) impactStatus = "Manque d'impact (Trop lent)";
+        else impactStatus = "Zone d'Autorité (Idéal)";
+
+        // Gatekeeper : Sécurité sur le contenu
+        const uniqueWords = new Set(wordsArr.map(w => w.toLowerCase()));
+        
+        if (cleanText.length < 40 || wordCount < 15 || uniqueWords.size < 8) {
             console.log("Rejeté : Audio trop court ou pauvre");
             return res.status(200).json({
-                score: 0,
-                authority: 0,
-                clarity: 0,
-                silence: 0,
-                diagnostic: "⚠️ Enregistrement trop court ou peu exploitable. Parlez au moins 20 secondes avec des phrases complètes."
+                score: 0, authority: 0, clarity: 0, silence: 0,
+                diagnostic: "⚠️ Enregistrement trop court ou peu exploitable. Parlez au moins 20 secondes."
             });
         }
 
-
-        // 3. LE PROMPT (INTEGRAL + SÉCURITÉ)
+        // 3. LE PROMPT (MAINTENU + INJECTION BIOMÉTRIQUE)
         const prompt = `
         ANALYSE DE TRANSCRIPTION : "${cleanText}"
-
+        
         ---------------------------------------------------
+        MESURES BIOMÉTRIQUES RÉELLES (DONNÉES SOURCES) :
+        - Débit mesuré : ${wpm} mots par minute.
+        - Statut du rythme : ${impactStatus}.
+        - Durée de l'échantillon : ${duration} secondes.
+        ---------------------------------------------------
+
         CONDITION PRÉALABLE (SÉCURITÉ) :
-        Si le texte ci-dessus est incohérent, ne veut rien dire, ou ressemble à du bruit de fond (ex: juste des "euh", des bruits, ou des mots sans lien), RENVOYEZ IMMÉDIATEMENT :
-        { "score": 0, "authority": 0, "clarity": 0, "silence": 0, "teaser": "Enregistrement non valide.", "facts": "Propos non intelligible.", "consequences": "N/A", "risk": "N/A", "steps": ["Recommencer", "Parler plus fort", "Éviter le bruit"] }
-        ---------------------------------------------------
+        Si le texte est incohérent, renvoyez score 0.
 
-        SINON, APPLIQUEZ L'EXPERTISE VOX MASTERY SUIVANTE (LE VRAI PROMPT) :
+        SINON, APPLIQUEZ L'EXPERTISE VOX MASTERY SUIVANTE :
 
-        Vous êtes le Mentor Senior Vox Mastery, spécialiste de l’autorité vocale et de la prise de parole à haut niveau.
+
+       Vous êtes le Mentor Senior Vox Mastery, spécialiste de l’autorité vocale et de la prise de parole à haut niveau.
         Depuis des années, vous accompagnez des dirigeants, cadres et profils à fort potentiel dont la voix constitue un levier stratégique encore sous-exploité.
 
         Vous avez analysé et comparé des centaines de milliers de discours professionnels réels, et votre référentiel n’est jamais la moyenne.
@@ -200,43 +231,32 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         ADOPTEZ UNE POSTURE HUMAINE ET EXPERTE :
         Vous vous adressez à un professionnel intelligent, compétent, mais perfectible.
         Votre rôle n’est pas de juger, ni de flatter, mais de mettre en lumière ce que la voix révèle — et ce qu’elle limite encore.
+        
+        CONSIGNE SPÉCIFIQUE : Intégrez l'analyse de ce débit de ${wpm} WPM dans votre diagnostic. 
+        Expliquez comment ce rythme physique influence la perception de l'autorité du leader.
 
         RÈGLES DE SCORING (IMPORTANTES) :
-        - Les scores doivent rester globalement bas : ils mesurent un écart vers l’élite, pas un niveau scolaire.
-        - Un score global supérieur à 65 est rare et exceptionnel.
-        - Les sous-scores doivent être cohérents entre eux (autorité, clarté, silence).
-
-        INSTRUCTIONS D’ANALYSE :
-        1. Évaluez l’autorité vocale réelle : assurance, stabilité, capacité à imposer un cadre.
-        2. Analysez la clarté : structure, lisibilité, logique du propos.
-        3. Analysez la gestion du rythme et des silences : respiration, pauses, accélérations.
-        4. Identifiez une limite principale qui freine l’impact global, même si le niveau est correct.
-        5. Citez au moins une phrase exacte de la transcription pour appuyer votre analyse factuelle.
-
-        TON À ADOPTER :
-        - professionnel, posé, humain
-        - exigeant mais respectueux
-        - lucide, jamais brutal
-        - orienté prise de conscience et progression
+        - Les scores doivent rester globalement bas (< 65).
+        - Les sous-scores doivent être cohérents avec le débit de ${wpm} WPM.
 
         FORMAT DE SORTIE STRICT (JSON uniquement) :
         {
-          "score": nombre entre 25 et 65 (ou 0 si invalide),
-          "authority": nombre entre 20 et 70 (ou 0),
-          "clarity": nombre entre 20 et 70 (ou 0),
-          "silence": nombre entre 15 et 65 (ou 0),
-          "teaser": phrase courte et engageante,
-          "facts": analyse factuelle avec citation,
-          "consequences": conséquence concrète sur l'impact pro,
-          "risk": risque moyen terme,
-          "steps": tableau de 3 recommandations (axes de travail).
+          "score": nombre entre 25 et 65,
+          "authority": nombre,
+          "clarity": nombre,
+          "silence": nombre,
+          "teaser": "Le constat sur votre débit de ${wpm} WPM...",
+          "facts": "Analyse factuelle incluant le rythme et une citation...",
+          "consequences": "Conséquence sur l'impact pro...",
+          "risk": "Risque moyen terme...",
+          "steps": ["Action 1", "Action 2", "Action 3"]
         }
         `;
 
         const chatResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', {
             model: "llama-3.3-70b-versatile",
             messages: [{ role: "user", content: prompt }],
-            temperature: 0.2 // Température basse pour la rigueur
+            temperature: 0.2 
         }, {
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` }
         });
@@ -245,10 +265,8 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         try {
             const content = chatResponse.data.choices[0].message.content.replace(/```json|```/g, "").trim();
             analysisData = JSON.parse(content);
-            const clamp = (val, min, max) => {
-            val = Number(val) || 0;
-            return Math.max(min, Math.min(max, val));
-            };
+            
+            const clamp = (val, min, max) => Math.max(min, Math.min(max, Number(val) || 0));
             
             analysisData.score = clamp(analysisData.score, 0, 65);
             analysisData.authority = clamp(analysisData.authority, 0, 70);
@@ -256,47 +274,29 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
             analysisData.silence = clamp(analysisData.silence, 0, 65);
 
             if (analysisData.score > 0) {
-                analysisData.score = Math.round(
-                    (analysisData.authority + analysisData.clarity + analysisData.silence) / 3
-                );
+                analysisData.score = Math.round((analysisData.authority + analysisData.clarity + analysisData.silence) / 3);
             }
-
-
         } catch (e) {
             console.error("Erreur parsing JSON:", e.message);
-            // Fallback neutre en cas de crash IA
-        analysisData = {
-            score: 0,
-            authority: 0,
-            clarity: 0,
-            silence: 0,
-            teaser: "Analyse automatique indisponible.",
-            facts: "Votre enregistrement a bien été reçu mais n’a pas pu être interprété correctement.",
-            consequences: "Aucune évaluation fiable possible.",
-            risk: "N/A",
-            steps: ["Réenregistrer dans un environnement calme", "Parler plus lentement", "Utiliser un micro correct"]
-        };
-
-
+            analysisData = { score: 0, authority: 0, clarity: 0, silence: 0, teaser: "Erreur d'analyse.", facts: "", consequences: "", risk: "", steps: [] };
         }
 
-        // Envoi au CRM uniquement si le score est valide (> 0)
+        // Envoi au CRM
         if (analysisData.score > 0 && MAKE_CRM_WEBHOOK) {
             const finalHTML = generateFullHTMLReport(userName, analysisData.score, analysisData);
             axios.post(MAKE_CRM_WEBHOOK, {
-                name: userName,
-                email: req.body.email,
-                whatsapp: userWhatsapp,
-                score: analysisData.score,
-                html_report: finalHTML
+                name: userName, email: req.body.email, whatsapp: userWhatsapp,
+                score: analysisData.score, html_report: finalHTML, wpm: wpm // On ajoute le WPM au CRM
             }).catch(err => console.error("Erreur CRM :", err.message));
         }
 
+        // RÉPONSE FINALE (Avec ajout du WPM pour le frontend)
         res.status(200).json({
             score: analysisData.score,
             authority: analysisData.authority,
             clarity: analysisData.clarity,
             silence: analysisData.silence,
+            wpm: wpm, // Crucial pour le badge frontend
             diagnostic: analysisData.score === 0 
                 ? analysisData.teaser 
                 : `${analysisData.teaser} 🔒 Audit complet envoyé sur WhatsApp.`
