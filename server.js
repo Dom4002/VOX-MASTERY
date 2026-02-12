@@ -127,6 +127,11 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         return res.status(400).json({ error: "Fichier audio manquant." });
     }
 
+    if (!req.file.mimetype.startsWith("audio/")) {
+        return res.status(400).json({ error: "Format audio invalide." });
+    }
+
+
     try {
         console.log("Fichier reçu, taille:", req.file.size);
 
@@ -153,14 +158,26 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         cleanText = cleanText.trim();
 
         // Gatekeeper : Si moins de 3 mots réels, on rejette AVANT d'appeler l'IA (économie + sécurité)
-        const wordCount = cleanText.split(/\s+/).length;
-        if (cleanText.length < 10 || wordCount < 3) {
-            console.log("Rejeté : Audio vide ou inexploitable");
+        // Gatekeeper renforcé : contenu réellement exploitable
+        const words = cleanText.split(/\s+/).filter(w => w.length > 2);
+        const wordCount = words.length;
+        const uniqueWords = new Set(words.map(w => w.toLowerCase()));
+        
+        if (
+            cleanText.length < 40 ||   // trop court
+            wordCount < 15 ||          // pas assez de mots
+            uniqueWords.size < 8       // trop répétitif / pauvre
+        ) {
+            console.log("Rejeté : Audio trop court ou pauvre");
             return res.status(200).json({
-                score: 0, authority: 0, clarity: 0, silence: 0,
-                diagnostic: "⚠️ Enregistrement inaudible ou trop court. Veuillez parler clairement pendant au moins 10 secondes."
+                score: 0,
+                authority: 0,
+                clarity: 0,
+                silence: 0,
+                diagnostic: "⚠️ Enregistrement trop court ou peu exploitable. Parlez au moins 20 secondes avec des phrases complètes."
             });
         }
+
 
         // 3. LE PROMPT (INTEGRAL + SÉCURITÉ)
         const prompt = `
@@ -228,13 +245,39 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
         try {
             const content = chatResponse.data.choices[0].message.content.replace(/```json|```/g, "").trim();
             analysisData = JSON.parse(content);
+            const clamp = (val, min, max) => {
+            val = Number(val) || 0;
+            return Math.max(min, Math.min(max, val));
+            };
+            
+            analysisData.score = clamp(analysisData.score, 0, 65);
+            analysisData.authority = clamp(analysisData.authority, 0, 70);
+            analysisData.clarity = clamp(analysisData.clarity, 0, 70);
+            analysisData.silence = clamp(analysisData.silence, 0, 65);
+
+            if (analysisData.score > 0) {
+                analysisData.score = Math.round(
+                    (analysisData.authority + analysisData.clarity + analysisData.silence) / 3
+                );
+            }
+
+
         } catch (e) {
             console.error("Erreur parsing JSON:", e.message);
             // Fallback neutre en cas de crash IA
-            analysisData = {
-                score: 0, authority: 0, clarity: 0, silence: 0,
-                teaser: "Erreur d'analyse.", facts: "Données non traitées.", consequences: "N/A", risk: "N/A", steps: ["Réessayer"]
-            };
+        analysisData = {
+            score: 0,
+            authority: 0,
+            clarity: 0,
+            silence: 0,
+            teaser: "Analyse automatique indisponible.",
+            facts: "Votre enregistrement a bien été reçu mais n’a pas pu être interprété correctement.",
+            consequences: "Aucune évaluation fiable possible.",
+            risk: "N/A",
+            steps: ["Réenregistrer dans un environnement calme", "Parler plus lentement", "Utiliser un micro correct"]
+        };
+
+
         }
 
         // Envoi au CRM uniquement si le score est valide (> 0)
