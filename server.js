@@ -1,4 +1,4 @@
-const express = require('express');
+ const express = require('express');
 const multer = require('multer');
 const axios = require('axios');
 const cors = require('cors');
@@ -8,6 +8,9 @@ const FormData = require('form-data');
 const PORT = process.env.PORT || 3000;
 const GROQ_API_KEY = process.env.GROQ_API_KEY; 
 const MAKE_CRM_WEBHOOK = process.env.MAKE_CRM_WEBHOOK;
+
+// --- AJOUT : URL DE VOTRE SITE POUR LES LIENS MAGIQUES ---
+const CLIENT_URL = "https://dominiquecataria199-dot.github.io/vox";
 
 const app = express();
 
@@ -309,10 +312,21 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
 
         // Envoi au CRM
         if (analysisData.score > 0 && MAKE_CRM_WEBHOOK) {
+            
+            // --- GÉNÉRATION DU LIEN MAGIQUE "CANDIDATER" ---
+            // Ce lien est envoyé à Make pour être inclus dans l'email. 
+            // Si l'utilisateur clique, il arrive sur la page en mode "apply_only" (Vente + Modale)
+            const magicLinkApply = `${CLIENT_URL}?step=apply&email=${encodeURIComponent(req.body.email || "")}`;
+
             const finalHTML = generateFullHTMLReport(userName, analysisData.score, analysisData);
+            
             axios.post(MAKE_CRM_WEBHOOK, {
                 name: userName, email: req.body.email, whatsapp: userWhatsapp,
-                score: analysisData.score, html_report: finalHTML, wpm: wpm // On ajoute le WPM au CRM
+                score: analysisData.score, html_report: finalHTML, wpm: wpm, // On ajoute le WPM au CRM
+                
+                // AJOUT DU LIEN MAGIQUE DANS LE PAYLOAD
+                magicLinkApply: magicLinkApply
+
             }).catch(err => console.error("Erreur CRM :", err.message));
         }
 
