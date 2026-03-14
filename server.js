@@ -48,8 +48,8 @@ const calculateBiometrics = (text, duration) => {
 
 
 // --- GÉNÉRATEUR RAPPORT HTML ---
-const generateFullHTMLReport = (name, score, data) => {
-    const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+const generateFullHTMLReport = (name, score, data, magicLink) => {
+const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
     
     // Protection si data.steps est vide
     const stepsList = Array.isArray(data.steps) ? data.steps : ["Travailler le débit", "Poser la voix", "Améliorer l'articulation"];
@@ -143,7 +143,7 @@ const generateFullHTMLReport = (name, score, data) => {
                                         <table border="0" cellpadding="0" cellspacing="0">
                                             <tr>
                                                 <td align="center" bgcolor="#6366f1" style="border-radius: 2px; padding: 18px 35px;">
-                                                    <a href="https://vox-mastery.cataria-systems.com#programme" style="color: #ffffff; font-weight: bold; text-decoration: none; text-transform: uppercase; font-size: 13px; letter-spacing: 2px;">Corriger mes failles</a>
+                                                  <a href="${magicLink}" style="color: #ffffff; font-weight: bold; text-decoration: none; text-transform: uppercase; font-size: 13px; letter-spacing: 2px;">Corriger mes failles</a>
                                                 </td>
                                             </tr>
                                         </table>
@@ -316,9 +316,10 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
             // --- GÉNÉRATION DU LIEN MAGIQUE "CANDIDATER" ---
             // Ce lien est envoyé à Make pour être inclus dans l'email. 
             // Si l'utilisateur clique, il arrive sur la page en mode "apply_only" (Vente + Modale)
-            const magicLinkApply = `${CLIENT_URL}?step=apply&email=${encodeURIComponent(req.body.email || "")}`;
-
-            const finalHTML = generateFullHTMLReport(userName, analysisData.score, analysisData);
+          const magicLinkApply = `${CLIENT_URL}?step=apply&email=${encodeURIComponent(req.body.email || "")}`;
+          
+          // ON PASSE LE LIEN MAGIQUE À LA FONCTION QUI CRÉE L'EMAIL
+          const finalHTML = generateFullHTMLReport(userName, analysisData.score, analysisData, magicLinkApply);
             
             axios.post(MAKE_CRM_WEBHOOK, {
                 name: userName, email: req.body.email, whatsapp: userWhatsapp,
