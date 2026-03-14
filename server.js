@@ -10,7 +10,7 @@ const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const MAKE_CRM_WEBHOOK = process.env.MAKE_CRM_WEBHOOK;
 
 // --- AJOUT : URL DE VOTRE SITE POUR LES LIENS MAGIQUES ---
-const CLIENT_URL = "https://dominiquecataria199-dot.github.io/vox";
+const CLIENT_URL = "https://vox-mastery.cataria-systems.com/";
 
 const app = express();
 
@@ -143,7 +143,7 @@ const generateFullHTMLReport = (name, score, data) => {
                                         <table border="0" cellpadding="0" cellspacing="0">
                                             <tr>
                                                 <td align="center" bgcolor="#6366f1" style="border-radius: 2px; padding: 18px 35px;">
-                                                    <a href="https://votre-site.com#programme" style="color: #ffffff; font-weight: bold; text-decoration: none; text-transform: uppercase; font-size: 13px; letter-spacing: 2px;">Corriger mes failles</a>
+                                                    <a href="https://vox-mastery.cataria-systems.com#programme" style="color: #ffffff; font-weight: bold; text-decoration: none; text-transform: uppercase; font-size: 13px; letter-spacing: 2px;">Corriger mes failles</a>
                                                 </td>
                                             </tr>
                                         </table>
