@@ -91,7 +91,7 @@ const dateStr = new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 
                                     <td align="center" style="padding: 30px;">
                                         <p style="margin: 0; font-size: 11px; text-transform: uppercase; color: #64748b; letter-spacing: 3px;">Impact Score Global</p>
                                         <h2 style="font-size: 72px; font-weight: bold; color: #6366f1; margin: 10px 0; line-height: 1;">${score}<span style="font-size: 24px; color: #1e293b;">/100</span></h2>
-                                        <p style="margin: 0; font-size: 12px; color: #a855f7; font-style: italic;">Statut : Analyse de haute performance terminée</p>
+                                        <p style="margin: 0; font-size: 12px; color: #a855f7; font-style: italic;">Statut : Analyse terminée</p>
                                     </td>
                                 </tr>
                             </table>
@@ -340,7 +340,7 @@ app.post('/api/audit', upload.single('audio'), async (req, res) => {
             wpm: wpm, // Crucial pour le badge frontend
             diagnostic: analysisData.score === 0 
                 ? analysisData.teaser 
-                : `${analysisData.teaser} 🔒 Audit complet envoyé sur WhatsApp.`
+                : `${analysisData.teaser} 🔒 Audit complet envoyé dans votre mail.`
         });
 
     } catch (error) {
